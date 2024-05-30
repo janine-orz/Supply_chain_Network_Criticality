@@ -314,6 +314,104 @@ def NETW_INTO_MATRIX(SC_a, R, S, C):
     # print("SC_A_C : \n", SC_A_C_flip180)
     return SC_A_R_flip180, SC_A_S_flip180, SC_A_C_flip180
 
+def List_at_x_axis(node_list_R, node_list_S, SC_d, SC_e, minus_par, pos_cont2, list_on_2nd_line):
+    for node in node_list_R:
+        list_var = list(SC_d.neighbors(node))
+        for node1 in list_var:
+            if ("M" in node1):
+                pos_cont2[node] = (0, (1 + minus_par))
+                list_on_2nd_line.append(node)
+                SC_e.add_edge(node, node1)
+                minus_par = minus_par + 1
+                
+            elif ("C" in node1):
+                pos_cont2[node] = (0, (1 + minus_par))
+                list_on_2nd_line.append(node)
+                SC_e.add_edge(node, node1)
+                minus_par = minus_par + 1
+
+    for node in node_list_S:
+        list_var = list(SC_d.neighbors(node))
+        for node1 in list_var:
+            if ("M" in node1):
+                pos_cont2[node] = (0, 1 + minus_par)
+                list_on_2nd_line.append(node)
+                SC_e.add_edge(node, node1)
+                minus_par = minus_par + 1
+    
+    return list_on_2nd_line, SC_e, pos_cont2
+
+def parallel_supply_chain(node_list_R, node_list_S, SC_d, node_list_pos_cont, len_node_list_pos_cont, SC_e, pos_cont, pos_cont2):
+    for node in node_list_R:
+        list_var = list(SC_d.neighbors(node))
+        for node1 in list_var:
+            if ("M" in node1):
+                name_node1 = node1 + "|" + node1[-1]
+                SC_e.add_node(name_node1)
+                pos_cont[name_node1] = (pos_cont[node1][0], pos_cont2[node][1])
+                SC_e.add_edge(node, name_node1)
+                SC_e.remove_edge(node, node1)
+                if(node_list_pos_cont.index(node1) < len_node_list_pos_cont-1):
+                    node3_idx = node_list_pos_cont.index(node1)
+                    node3 = node_list_pos_cont[node3_idx+1]
+                    SC_e.add_edge(name_node1, node3)
+                
+                if(node_list_pos_cont.index(node1) != len_node_list_pos_cont):
+                    node2_idx = node_list_pos_cont.index(node1)
+                    node2 = node_list_pos_cont[node2_idx-1]
+                    SC_e.add_edge(node2, node)
+                    pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
+                elif(node_list_pos_cont.index(node1) == len_node_list_pos_cont):
+                    pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
+                else:
+                    print("ERROR:", node, "--->", node1)
+        
+            elif ("C" in node1):
+                name_node1 = node1 + "|" + node1[-1]
+                SC_e.add_node(name_node1)
+                pos_cont[name_node1] = (pos_cont[node1][0], pos_cont2[node][1])
+                SC_e.add_edge(node, name_node1)
+                SC_e.remove_edge(node, node1)
+
+                if(node_list_pos_cont.index(node1) < len_node_list_pos_cont-1):
+                    node3_idx = node_list_pos_cont.index(node1)
+                    node3 = node_list_pos_cont[node3_idx+1]
+                    SC_e.add_edge(name_node1, node3)
+                
+                if(node_list_pos_cont.index(node1) != len_node_list_pos_cont):
+                    node2_idx = node_list_pos_cont.index(node1)
+                    node2 = node_list_pos_cont[node2_idx-1]
+                    SC_e.add_edge(node2, node)
+                    pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
+            
+            else:
+                    print("ERROR", node, "--->", node1)
+            
+    
+    for node in node_list_S:
+        list_var = list(SC_d.neighbors(node))
+        for node1 in list_var:
+            if ("M" in node1):
+                name_node1 = node1 + "|" + node1[-1]
+                SC_e.add_node(name_node1)
+                pos_cont[name_node1] = (pos_cont[node1][0], pos_cont2[node][1])
+                SC_e.add_edge(node, name_node1)
+                SC_e.remove_edge(node, node1)
+                if(node_list_pos_cont.index(node1) < len_node_list_pos_cont-1):
+                    node3_idx = node_list_pos_cont.index(node1)
+                    node3 = node_list_pos_cont[node3_idx+1]
+                    SC_e.add_edge(name_node1, node3)
+                
+                if(node_list_pos_cont.index(node1) != len_node_list_pos_cont):
+                    node2_idx = node_list_pos_cont.index(node1)
+                    node2 = node_list_pos_cont[node2_idx-1]
+                    SC_e.add_edge(node2, node)
+                    pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
+                elif(node_list_pos_cont.index(node1) == len_node_list_pos_cont):
+                    pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
+
+    return pos_cont, SC_e
+
 def CONTRACTED_POS(pos, SC_A_R, IDX, num, node_list, list_on_2nd_line):
     # print("SC_A:\n", SC_A_R)
     node_list_rdy = []
@@ -334,7 +432,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX, num, node_list, list_on_2nd_line):
         for j in range(i, IDX):
             if SC_A_R[i][j] == 1:
                 # the node in the j-th horizontal line directing to the node in the i-th vertical line
-                print("(H|", j, "---> V|", i, ")", SC_A_R[i][j]) # V: Vertical index, H: Horizontal index
+                # print("(H|", j, "---> V|", i, ")", SC_A_R[i][j]) # V: Vertical index, H: Horizontal index
                 # write down the index of the horizontal line
                 node_hor.append(j)
                 # write down the index of the horizontal line
@@ -363,7 +461,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX, num, node_list, list_on_2nd_line):
     node_hor = [x for x in node_hor if x not in node_mid]
     # print(node_hor)
     
-    print("===VER===")
+    # print("===VER===")
     # we use the FOR-loop to check which node should be on the right-est
     for node in node_ver:
         # print("node : ", node)
@@ -385,7 +483,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX, num, node_list, list_on_2nd_line):
             IDX = pos[nodevar]
             node_list_rdy.append(nodevar)
     
-    print("===MID===")
+    # print("===MID===")
     for node in node_mid:
         # print("node : ", node)
         # print(node_list[node], (node_list[node] not in list_on_2nd_line))
@@ -396,7 +494,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX, num, node_list, list_on_2nd_line):
             node_list_rdy.append(nodevar)
             # print(pos[nodevar])
 
-    print("===HOR===")
+    # print("===HOR===")
     result = collections.Counter(node_hor)
     node_hor = set(node_hor)
     var = -100
@@ -488,6 +586,21 @@ def ADD_EDGE_TO_NEXT_TIER(node, string1, number, next_tier, SC_d, SC_b):
             SC_d.add_edge(node, node_rand)
             SC_b.add_edge(node, node_rand)
     return SC_d, SC_b
+
+def bubble_sort(length, list_pos_cont):
+    for i in range(length-1):
+        swapped = False
+        for j in range(length-i-1):
+            key1 = list_pos_cont[j][0]
+            coor1 = list_pos_cont[j][1]
+            key2 = list_pos_cont[j+1][0]
+            coor2 = list_pos_cont[j+1][1]
+            if coor1[0] > coor2[0]:
+                swapped = True
+                list_pos_cont[j] = (key2, coor2)
+                list_pos_cont[j+1] = (key1, coor1)
+        if not swapped:
+            return list_pos_cont
 
 def plot_degree_dist(G, m, color):
     plt.subplot(2,2,m)
@@ -690,6 +803,7 @@ def main(args=None):
     
     # print("\n3. SC_a: \t", SC_a)
     # print("SC_a.EDGES : \t", SC_a.edges)
+    
 
     plt.figure(1)
     nx.draw_networkx_edges(SC, pos = pos)
@@ -698,8 +812,8 @@ def main(args=None):
     nx.draw_networkx_nodes(SC, pos = pos, node_size = 500, node_color = 'black', node_shape = 'o')
     nx.draw_networkx_nodes(SC, pos = pos, node_size = 450, node_color = 'w', node_shape = 'o')
     nx.draw_networkx_labels(SC, pos = pos, font_size = 10, font_color = 'black')
-
     
+
     pos_cont = {}
     # check how many nodes are adjacent to another node in its tier    
     node_list_a = ADJ_IN_ONE_TIER(SC_a)
@@ -725,27 +839,12 @@ def main(args=None):
     node_list_M = node_list_M[::-1]
     # print("node_list_M:", node_list_M)
     
-    # print("\n4. SC_a: \t", SC_a)
-    # print("SC_a.EDGES : \t", SC_a.edges)
     pos_cont2 = {}
     list_on_2nd_line = []
     minus_par = 0
-    for node in node_list_R:
-        list_var = list(SC_d.neighbors(node))
-        for node1 in list_var:
-            if ("M" in node1) or ("C" in node1):
-                pos_cont2[node] = (R, 2 + minus_par)
-                list_on_2nd_line.append(node)
-                minus_par = minus_par + 2
-    minus_par = 0
-    for node in node_list_S:
-        list_var = list(SC_d.neighbors(node))
-        for node1 in list_var:
-            if ("M" in node1):
-                pos_cont2[node] = (R+S, 2 + minus_par)
-                list_on_2nd_line.append(node)
-                minus_par = minus_par + 2
-    # print(pos_cont2)
+    SC_e = nx.DiGraph()
+    SC_e.add_nodes_from(SC_a)
+    list_on_2nd_line, SC_e, pos_cont2 = List_at_x_axis(node_list_R, node_list_S, SC_d, SC_e, minus_par, pos_cont2, list_on_2nd_line)
 
     # turn the network in to Matrix and focus only on Tier R
     SC_A_R, SC_A_S, SC_A_C = NETW_INTO_MATRIX(SC_a, R, S, C)
@@ -767,14 +866,73 @@ def main(args=None):
     pos_cont = CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list_C, node_list_rdy, list_on_2nd_line, "C")
     pos_cont = CONTRACTED_POS_CONT_FILL(pos_cont, SC)
     
-    pos_cont.update(pos_cont2)
     # print(pos_cont)
+
     
-    plt.figure(4)
-    nx.draw_networkx_edges(SC_a, pos = pos_cont, edge_color = 'green', connectionstyle = "arc3, rad = 0.5", arrows = True)
-    nx.draw_networkx_nodes(SC, pos = pos_cont, node_size = 500, node_color = 'black', node_shape = 'o')
-    nx.draw_networkx_nodes(SC, pos = pos_cont, node_size = 450, node_color = 'w', node_shape = 'o')
-    nx.draw_networkx_labels(SC, pos = pos_cont, font_size = 10, font_color = 'black')
+    SC_f = nx.DiGraph()
+    list_pos_cont = list(pos_cont.items())
+    length = len(list_pos_cont)
+    list_pos_cont1 = list_pos_cont.copy()
+    # delete the node not at the same line
+    for l in range(length):
+        if(list_pos_cont[l][1][1] != 0):
+            list_pos_cont1.remove(list_pos_cont[l])
+
+    list_pos_cont = list_pos_cont1
+    length = len(list_pos_cont)
+    list_pos_cont = bubble_sort(length, list_pos_cont)
+    # adding edges between nodes at y=0 axis
+    for l in range(length-1):
+        node1 = list_pos_cont[l][0]
+        node2 = list_pos_cont[l+1][0]
+        # print(list_pos_cont[l][1][0] == 0)
+        if(list_pos_cont[l][1][1] == 0) and (list_pos_cont[l+1][1][1] == 0):
+            SC_f.add_edge(node1, node2)
+
+    pos_cont = dict(list_pos_cont)
+    pos_cont.update(pos_cont2)
+    print(pos_cont)
+    
+    node_list_pos_cont = []
+    for i in list_pos_cont:
+        node_list_pos_cont.append(i[0])
+    len_node_list_pos_cont = len(node_list_pos_cont)
+    print(len_node_list_pos_cont)
+
+    pos_cont, SC_e = parallel_supply_chain(node_list_R, node_list_S, SC_d, node_list_pos_cont, len_node_list_pos_cont, SC_e, pos_cont, pos_cont2)
+
+    SC_h = nx.DiGraph()
+    for edge in SC_a.edges:
+        coord = (pos_cont[edge[0]][0] + 1, 0)
+        key = [key for key, value in pos_cont.items() if value == coord]
+        while(key == []):
+            coord = (coord[0] + 1, 0)
+            key = [key for key, value in pos_cont.items() if value == coord]
+        print(edge[1], "--", key)
+        SC_h.add_edge(edge[1], key[0])
+        # print(node_list_pos_cont.index(edge[0]))
+        # print(node_list_pos_cont.index(edge[0])+1)
+        # print(node_list_pos_cont[node_list_pos_cont.index(edge[0])+1])
+
+    SC_g = SC_e.copy()
+    SC_g.add_edges_from(SC_f.edges)
+    SC_g.add_edges_from(SC_h.edges)
+    # SC_g.add_node('Start')
+    # SC_g.add_node('OEM')
+    # pos_cont['Start'] = (pos_cont['R-1'][0]-3, pos_cont['R-1'][1])
+    # pos_cont['OEM'] = (pos_cont['M-1'][0]+3, pos_cont['M-1'][1])
+    # SC_g.add_edge('Start', 'R-1')
+    # SC_g.add_edge('M-1', 'OEM')
+    # SC_g.add_edge('M-1|1', 'OEM')
+    print([p for p in nx.all_simple_paths(SC_g, source='R-1', target = 'M-1'or'M-1|1')])
+
+    plt.figure(2)
+    nx.draw_networkx_edges(SC_h, pos = pos_cont, edge_color = 'blue', connectionstyle = "arc3, rad = 0.3", arrows = True)
+    nx.draw_networkx_edges(SC_e, pos = pos_cont, edge_color = 'green', connectionstyle = "arc3, rad = 0.3", arrows = True)
+    nx.draw_networkx_edges(SC_f, pos = pos_cont, edge_color = 'black', arrows = True)
+    nx.draw_networkx_nodes(SC_g, pos = pos_cont, node_size = 500, node_color = 'black', node_shape = 'o')
+    nx.draw_networkx_nodes(SC_g, pos = pos_cont, node_size = 450, node_color = 'w', node_shape = 'o')
+    nx.draw_networkx_labels(SC_g, pos = pos_cont, font_size = 10, font_color = 'black')
     
     # nx.draw_networkx_edges(SC_c, pos = pos_cont, edge_color = 'blue', connectionstyle = "arc3, rad = 0.5", arrows = True)
 
