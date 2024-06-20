@@ -44,7 +44,9 @@ E_23 = S  / 2 * 1 # = #(node von S) / 2                      * (Multi-Parameter 
 E_34 = M  / 2 * 1 # = #(node von M) / 2                      * (Multi-Parameter // 2)
 pE = 0
 rou = 0.85
-num_of_fig = 100
+num_of_fig = input()
+print(type(num_of_fig))
+
 
 def multiply(*list):
     result = 1
@@ -118,8 +120,6 @@ def TRANS(R, S, C, M, pR, pS, pC, pM, E_12, E_23, E_34):
     BIPARTITE(SC, T2, T3, E_23)
     BIPARTITE(SC, T3, T4, E_34)
 
-
-
     return SC, T1, T2, T3, T4
 
 
@@ -166,8 +166,6 @@ def RENAME(T1, M, string):
                 T1 = nx.relabel_nodes(T1, new_name)
                 node = list(T1.nodes)
             new_name = {}
-            # if(new_name[v] != {}):
-                # v = new_name[v]
 
     return T1
 
@@ -202,7 +200,6 @@ def PERFORM(SC, T1, T2, T3, T4, without_node):
 
     partition = [n1list, n2list, n3list, n4list]
     perform_G = nx.algorithms.community.partition_quality(SC_copy, partition)
-    # print(perform_G)
 
     # delete without_ndoe from the network
     if without_node == None:        
@@ -283,7 +280,6 @@ def NUM_OF_NODE_AIOT(node_list_a): # AIOT: adjacent in on tier
             number_of_node_S += 1
         elif (node[0] == "C"):
             number_of_node_C += 1
-    # print("2. R:", number_of_node_R, "S:", number_of_node_S, "C:", number_of_node_C)
     return number_of_node_R, number_of_node_S, number_of_node_C
 
 def NODE_LIST(SC, string):
@@ -328,8 +324,6 @@ def List_at_x_axis(node_list_R, node_list_S, SC_a, SC_d, SC_e, minus_par, pos_co
     for node in node_list_R:
         list_var = list(SC_d.neighbors(node))
         list_var_b = list(SC_a.neighbors(node))
-        # print("===List_at_x_axis - R=== ", list_var)
-        # print("===List_at_x_axis - R=== ", list_var_b)
         for node1 in list_var:
             if ("M" in node1) and (len(list_var_b) == 0):
                 pos_cont2[node] = (0, (1 + minus_par))
@@ -345,15 +339,10 @@ def List_at_x_axis(node_list_R, node_list_S, SC_a, SC_d, SC_e, minus_par, pos_co
                 SC_e.add_edge(node, node1)
                 minus_par = minus_par + 1
             
-            # elif(len(list_var_b) != 0):
-                # print(node,"stay on x-axis")
 
     for node in node_list_S:
-        print(node)
         list_var = list(SC_d.neighbors(node))
         list_var_b = list(SC_a.neighbors(node))
-        # print("===List_at_x_axis - S=== ", list_var)
-        # print("===List_at_x_axis - S=== ", list_var_b)
         for node1 in list_var:
             if ("M" in node1) and (len(list_var_b) == 0):
                 pos_cont2[node] = (0, 1 + minus_par)
@@ -361,8 +350,6 @@ def List_at_x_axis(node_list_R, node_list_S, SC_a, SC_d, SC_e, minus_par, pos_co
                 list_on_2nd_line.append(node)
                 SC_e.add_edge(node, node1)
                 minus_par = minus_par + 1
-            # elif(len(list_var_b) != 0):
-                # print(node,"stay on x-axis")
     
     return list_on_2nd_line, SC_e, pos_cont2
 
@@ -389,8 +376,7 @@ def parallel_supply_chain(node_list_R, node_list_S, SC_a, SC_d, node_list_pos_co
                     pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
                 elif(node_list_pos_cont.index(node1) == len_node_list_pos_cont):
                     pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
-                # else:
-                    # print("ERROR:", node, "--->", node1)
+
         
             elif ("C" in node1) and (len(list_var_b) == 0):
                 name_node1 = node1 + "|" + node1[-1]
@@ -409,9 +395,6 @@ def parallel_supply_chain(node_list_R, node_list_S, SC_a, SC_d, node_list_pos_co
                     node2 = node_list_pos_cont[node2_idx-1]
                     SC_e.add_edge(node2, node)
                     pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
-            
-            # else:
-                    # print("ERROR", node, "--->", node1)
             
     
     for node in node_list_S:
@@ -439,114 +422,6 @@ def parallel_supply_chain(node_list_R, node_list_S, SC_a, SC_d, node_list_pos_co
 
     return pos_cont, SC_e
 
-'''
-def CONTRACTED_POS(pos, SC_A_R, IDX, num, node_list, list_on_2nd_line):
-    # print("SC_A:\n", SC_A_R)
-    node_list_rdy = []
-    # print("num = ", num)
-    node_hor = []
-    node_ver = []
-
-    if(IDX == R):
-        test = [x for x in list_on_2nd_line if "R" in x]
-        test = len(test)
-        IDX = IDX - test
-    elif(IDX == S):
-        test = [x for x in list_on_2nd_line if "S" in x]
-        test = len(test)
-        IDX = IDX - test
-
-    for i in range(IDX):
-        for j in range(i, IDX):
-            if SC_A_R[i][j] == 1:
-                # the node in the j-th horizontal line directing to the node in the i-th vertical line
-                # print("(H|", j, "---> V|", i, ")", SC_A_R[i][j]) # V: Vertical index, H: Horizontal index
-                # write down the index of the horizontal line
-                node_hor.append(j)
-                # write down the index of the horizontal line
-                node_ver.append(i)
-                # with an edge from j---->i
-    
-    # since j ---> i
-    # the i-th vertical(node) should be on the right handside of the j-th horizontal(node)
-    # so we set the position of the VERTICAL nodes AT FIRST
-    # count how many times the element is in the list
-    result = collections.Counter(node_ver)
-    # print("result = ", result)
-    node_ver = set(node_ver)
-    # print("node_ver : ", node_ver)
-    var = -100
-
-    # if there is no nodes connecting in the same Tier, then STOP
-    if(len(node_hor) == 0)and(len(node_ver) == 0):
-        # print("(node_hor == [])and(node_ver == [])")
-        return pos, node_list_rdy, IDX
-    
-    node_mid = [x for x in node_hor if x in node_ver]
-    # print(node_mid)
-    node_ver = [x for x in node_ver if x not in node_mid]
-    # print(node_ver)
-    node_hor = [x for x in node_hor if x not in node_mid]
-    # print(node_hor)
-    
-    # print("===VER===")
-    # we use the FOR-loop to check which node should be on the right-est
-    for node in node_ver:
-        print("===node:", node, "===")
-        if(var == -100) and (node_list[node] not in list_on_2nd_line):
-            var = result[node] # how many times the node is connected in one tier
-            nodevar = node
-            pos[nodevar] = IDX - 1
-            print("pos[", nodevar, "]", pos[nodevar])
-            IDX = pos[nodevar]
-            node_list_rdy.append(nodevar)
-        elif(node not in node_hor) and (node_list[node] not in list_on_2nd_line):
-            var = result[node]
-            nodevar = node
-            pos[nodevar] = IDX - 1
-            print("pos[", nodevar, "]", pos[nodevar])
-            # print(pos[nodevar])
-            IDX = pos[nodevar]
-            node_list_rdy.append(nodevar)
-    
-    # print("===MID===")
-    for node in node_mid:
-        # print("node : ", node)
-        # print(node_list[node], (node_list[node] not in list_on_2nd_line))
-        if(node not in node_ver) and (node not in node_hor):
-            nodevar = node
-            pos[nodevar] = IDX - 1
-            IDX = pos[nodevar]
-            node_list_rdy.append(nodevar)
-            # print(pos[nodevar])
-
-    # print("===HOR===")
-    result = collections.Counter(node_hor)
-    node_hor = set(node_hor)
-    var = -100
-    
-    for node in node_hor:
-        # print("node : ", node)
-        # print((result[node] >= var), result[node], var)
-        # print((node not in node_ver))
-        # print(node_list[node], (node_list[node] not in list_on_2nd_line))
-        if(var == -100) and (node not in node_ver) and (node_list[node] not in list_on_2nd_line):
-            var = result[node]
-            nodevar = node
-            pos[nodevar] = IDX - 1
-            # print(pos[nodevar])
-            IDX = pos[nodevar]
-            node_list_rdy.append(nodevar)
-        elif(node not in node_ver) and (node_list[node] not in list_on_2nd_line):
-            var = result[node]
-            nodevar = node
-            pos[nodevar] = IDX - 1
-            # print(pos[nodevar])
-            IDX = pos[nodevar]
-            node_list_rdy.append(nodevar)
-
-    return pos, node_list_rdy, IDX
-'''
 def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
     print("SC_A:\n", SC_A_R)
     # SC_A_R = [
@@ -563,7 +438,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
             # print(i, ",", j)
             if SC_A_R[i][j] == 1:
                 # the node in the j-th horizontal line directing to the node in the i-th vertical line
-                print("(H|", j, "---> V|", i, ")", SC_A_R[i][j]) # V: Vertical index, H: Horizontal index
+                # print("(H|", j, "---> V|", i, ")", SC_A_R[i][j]) # V: Vertical index, H: Horizontal index
                 if(node_list[j] not in list_on_2nd_line) and (node_list[i] not in list_on_2nd_line):
                     # write down the index of the horizontal line
                     node_hor.append(j)
@@ -591,26 +466,24 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
             # print("In R there is no nodes connecting in the same Tier")
         return pos, node_list_rdy, IDX_h
     
-    print(node_ver)
-    print(node_hor)
-    print(node_hor_to_ver)
+
 
     node_mid_h = [x for x in node_hor if x in node_ver]
-    print("node_mid_h", node_mid_h)
+    # print("node_mid_h", node_mid_h)
     node_mid_h = sorted(node_mid_h)
-    print(node_mid_h)
+    # print(node_mid_h)
     node_mid_h = list(node_mid_h)
-    print(node_mid_h)
+    # print(node_mid_h)
     node_mid_v = [x for x in node_ver if x in node_hor]
-    print("node_mid_v:", node_mid_v)
+    # print("node_mid_v:", node_mid_v)
     node_mid_v = sorted(node_mid_v)
-    print(node_mid_v)
+    # print(node_mid_v)
     node_mid_v = list(node_mid_v)
-    print(node_mid_v)
+    # print(node_mid_v)
 
     
     if(len(node_mid_h) != 0):
-        print("-----len(node_mid_h) != 0-----")
+        # print("-----len(node_mid_h) != 0-----")
         node_v = [x for x in node_ver if x not in node_mid_v]
         node_h = [x for x in node_hor if x not in node_mid_h]
         result_m_v = collections.Counter(node_mid_v)
@@ -619,7 +492,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
         result_h = collections.Counter(node_h)
 
         for node_w in node_mid_h:
-            print("for ", node_w, " in node_mid_h:")
+            # print("for ", node_w, " in node_mid_h:")
             var_mid_h = result_hor[node_w]
             var_mid_v = result_ver[node_w]
             node_left = []
@@ -637,31 +510,31 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
                 left = [node_hor[j] for j,val in enumerate(node_ver) if val == node_v]
                 if(len(left) > 1):
                     node_left = [node for node in left if node != node_w]
-                    print("node_left:", node_left)
+                    # print("node_left:", node_left)
                 if(node_v not in pos.keys()):
                     pos[node_v] = (IDX_h-1, IDX_v)
                     IDX_v = IDX_v - 1
                     node_list_rdy.append(node_v)
                     param = param + 1
-                    print("pos[", node_v, "] = ", pos[node_v])
+                    # print("pos[", node_v, "] = ", pos[node_v])
             if(param > 0):
                 IDX_h = IDX_h - 1
             
             if(node_w not in pos.keys()):
-                print("for ", node_w)
+                # print("for ", node_w)
                 pos[node_w] = (IDX_h-1, 0)
                 node_list_rdy.append(node_w)
                 IDX_h = pos[node_w][0]
                 IDX_v = pos[node_w][1]
-                print("pos[", node_w, "] = ", pos[node_w])
+                # print("pos[", node_w, "] = ", pos[node_w])
             IDX_v = 0
             for node_s in node_left:
-                print("for ", node_s, " in node_left:")
+                # print("for ", node_s, " in node_left:")
                 if(node_s not in pos.keys()):
                     pos[node_s] = (IDX_h, IDX_v - 1)
                     node_list_rdy.append(node_s)
                     IDX_v = pos[node_s][1]
-                    print("pos[", node_s, "] = ", pos[node_s])
+                    # print("pos[", node_s, "] = ", pos[node_s])
             
             
 
@@ -670,15 +543,15 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
             param = 0
             for k in v_list:
                 node_u = node_hor_to_ver[k][0]
-                print("node_u:", node_u)
+                # print("node_u:", node_u)
                 # in node_hor_to_ver: [0]--> horizontal
                 right = [node_ver[j] for j,val in enumerate(node_hor) if val == node_u]
                 if(len(right) > 1):
                     node_right = [node for node in right if node != node_w]
-                    print("node_right:", node_right)
+                    # print("node_right:", node_right)
                     IDX_v_r = 0
                 for node_t in node_right:
-                    print("for ", node_t, " in node_right:")
+                    # print("for ", node_t, " in node_right:")
                     if(node_t not in pos.keys()):
                         while ((IDX_h-1, IDX_v_r) in pos.values()):
                             IDX_v_r = IDX_v_r - 1
@@ -686,7 +559,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
                         node_list_rdy.append(node_t)
                         IDX_v_r = IDX_v_r - 1
                         IDX_h = pos[node_t][0]
-                        print("pos[", node_t, "] = ", pos[node_t])
+                        # print("pos[", node_t, "] = ", pos[node_t])
                 node_right = []
                 if(node_u not in pos.keys()):
                     if ((IDX_h-1, IDX_v) not in pos.values()):
@@ -695,7 +568,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
                     IDX_v = IDX_v - 1
                     node_list_rdy.append(node_u)
                     param = param + 1
-                    print("pos[", node_u, "] = ", pos[node_u])
+                    # print("pos[", node_u, "] = ", pos[node_u])
             
                 if(param > 0):
                     IDX_h = IDX_h - 1
@@ -707,8 +580,8 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
     for i in range(len(node_ver)):
         node = node_ver[i]
         adjnode = node_hor[i]
-        print("-----len(node_mid_h) == 0-----")
-        print("node:", node, "adjnode:", adjnode)
+        # print("-----len(node_mid_h) == 0-----")
+        # print("node:", node, "adjnode:", adjnode)
         
         var_node = result_ver[node] # how many times the node is connected in one tier
         var_adjnode = result_hor[adjnode]
@@ -722,7 +595,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
             if(node_ver[j] not in pos.keys()):
                 pos[node_ver[j]] = (IDX_h-1, IDX_v)
                 IDX_v = IDX_v - 1
-                print("pos[", node_ver[j], "] = ", pos[node_ver[j]])
+                # print("pos[", node_ver[j], "] = ", pos[node_ver[j]])
                 param = param + 1
                 node_list_rdy.append(node_ver[j])
         if(param > 0):
@@ -732,17 +605,17 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
         IDX_v = 0
         param = 0 
         for k in k_list:
-            print("node_k:", node_hor[k])
+            # print("node_k:", node_hor[k])
             # print("IDX_v before right", IDX_v)
             right = [node_ver[j] for j,val in enumerate(node_hor) if val == node_hor[k]]
             # print("right", right)
             if(len(right) > 1):
-                print("if(len(right) > 1)")
+                # print("if(len(right) > 1)")
                 node_right = [node for node in right if node != node_hor[k]]
                 IDX_v_r = IDX_v
-                print("node_right:", node_right)
+                # print("node_right:", node_right)
             for node_t in node_right:
-                print("for ", node_t, " in node_right:")
+                # print("for ", node_t, " in node_right:")
                 if(node_t not in pos.keys()):
                     while ((IDX_h-1, IDX_v_r) in pos.values()):
                         IDX_v_r = IDX_v_r - 1
@@ -750,17 +623,17 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
                     node_list_rdy.append(node_t)
                     IDX_v_r = IDX_v_r - 1
                     IDX_h = pos[node_t][0]
-                    print("pos[", node_t, "] = ", pos[node_t])
+                    # print("pos[", node_t, "] = ", pos[node_t])
                     IDX_v = 0
             node_right = []
             # print("IDX_v after right", IDX_v)
             if(node_hor[k] not in pos.keys()):
-                print("if(node_hor[k] not in pos.keys())")
+                # print("if(node_hor[k] not in pos.keys())")
                 if ((IDX_h-1, IDX_v) not in pos.values()):
                     IDX_v = 0
                 pos[node_hor[k]] = (IDX_h-1, IDX_v)
                 IDX_v = IDX_v - 1
-                print("pos[", node_hor[k], "] = ", pos[node_hor[k]])
+                # print("pos[", node_hor[k], "] = ", pos[node_hor[k]])
                 param = param + 1
                 node_list_rdy.append(node_hor[k])
             if(param > 0):
@@ -793,7 +666,6 @@ def CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list, node_list_r
             IDX = IDX - 1
             # print("pos_cont_new[", key, "] = ", pos_cont_new[key])
     return pos_cont_new
-
 
 def CONTRACTED_POS_CONT_FILL(pos_cont, SC):
     idx = R+S+C
@@ -833,21 +705,6 @@ def ADD_EDGE_TO_NEXT_TIER(node, string1, number, next_tier, SC_d, SC_b):
             SC_d.add_edge(node, node_rand)
             SC_b.add_edge(node, node_rand)
     return SC_d, SC_b
-
-# def origin_path(all_path, pos_cont):
-#     origin_path = []
-#     all_path_at_0 = []
-#     for path in all_path:
-#         higher_nodes = [node for node in path if pos_cont[node][1] > 0]
-#         if(len(higher_nodes) == 0):
-#             all_path_at_0.append(path)
-#     l2 = 0
-#     for path in all_path_at_0:
-#         l1 = len(path)
-#         if l1 > l2:
-#             l2 = l1
-#             origin_path = path
-#     return origin_path
 
 def comparing_critical_node(all_path, orig_path):
     # print("orig_path:", orig_path)
@@ -959,10 +816,7 @@ def cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path):
     if(len(all_path) == 0):
         return criticality_1st
 
-    # critical_node, node_in_path_l = comparing_critical_node(all_path, orig_path)
     critical_node = comparing_critical_node(all_path, orig_path)
-    # print("critical_node:", critical_node)
-
 
     paths = []
     for idx in range(len(critical_node)-1):
@@ -1022,22 +876,14 @@ def remove_parallel_node(DC):
 def main(args=None):
      
     SC, T1, T2, T3, T4 = TRANS(R, S, C, M, pR, pS, pC, pM, E_12, E_23, E_34)
-    # print("SC: \t", SC)
-    # print("SC.EDGES : \t", SC.edges)
     SC_a = SC.copy()
-    # print("SC_a: \t", SC_a)
-    # print("SC_a.EDGES : \t", SC_a.edges)
     SC_b = SC.copy()
-    # print("SC_b: \t", SC_b)
-    # print("SC_b.EDGES : \t", SC_b.edges)
     SC_b.add_edges_from(T2.edges, layer = 2)
     SC_b.add_edges_from(T3.edges, layer = 1)
     SC_b.add_edges_from(T4.edges, layer = 0)
     
-    # print("SC_c: \t", SC_c)
 
     pos = POSITION(SC, 0)
-    # print("===pos===\n", pos)
 
     # SC_a contains only the edges conneting two nodes in one tier
     # SC contains only the edges conneting two nodes in different tiers
@@ -1052,26 +898,12 @@ def main(args=None):
     # print("=====after CRITICAL_1=====")
     
 
-    # plt.figure(1, figsize = (10, 6))
-    
-    # nx.draw_networkx_nodes(SC, pos = pos, node_size = 500, node_color = 'black', node_shape = 'o')
-    # nx.draw_networkx_nodes(SC, pos = pos, node_size = 450, node_color = 'w', node_shape = 'o')
-    # nx.draw_networkx(SC, pos = pos, with_labels = False, node_size = 450, node_color = 'w', node_shape = 'o')
-
-    # nx.draw_networkx_labels(SC, pos = pos, font_size = 10, font_color = 'black')
-    # plt.axis("equal")
-    
-    # for node in nodes SC_a
 
     # plt.figure(2, figsize = (10, 6))
 
     edge = SC_b.edges
     edgelist= list(edge)
     length = len(edgelist)
-    # print("\nSC: \t", SC)
-    # print("SC.EDGES : \t", SC.edges)
-    # print("\nSC_b: \t", SC_b)
-    # print("SC_b.EDGES : \t", SC_b.edges)
     SC_a.remove_edges_from(edge)
     for i in range(length):
         edge_uv = edgelist[i]
@@ -1080,8 +912,7 @@ def main(args=None):
         if node_u[0] == node_v[0]:
             SC_a.add_edge(node_u, node_v)
             SC_b.remove_edge(node_u, node_v)
-    # print("\n1. SC_a: \t", SC_a)
-    # print("SC_a.EDGES : \t", SC_a.edges)
+
 
     R_node_list = []
     S_node_list = []
@@ -1096,10 +927,6 @@ def main(args=None):
             C_node_list.append(u)
         elif("M" in u):
             M_node_list.append(u)
-    # print("R_node_list", R_node_list)
-    # print("S_node_list", S_node_list)
-    # print("C_node_list", C_node_list)
-    # print("M_node_list", M_node_list)
 
     adj_nodes = []
     for edge1 in SC_a.edges: # for edges in one tier
@@ -1129,9 +956,6 @@ def main(args=None):
     edges = SC.edges()
     # print("edges : ", edges)
     SC_d = SC_c.copy()
-    # print(SC_d)
-    # print("adj_nodes : ", adj_nodes)
-    # print("SC before adding edge", SC)
     # ADDING AN EXTRA POSSIBILITY CONTAINS ALL NODES ON THE RIGHT HANDSIDE
     S_C_M_node_list = []
     S_C_M_node_list.extend(S_node_list)
@@ -1149,12 +973,6 @@ def main(args=None):
     SC_d.remove_edges_from(edges)
 
 
-    # print("\nSC: \t", SC)
-    # print("SC.EDGES : \t", SC.edges)
-    # print("\nSC_b: \t", SC_b)
-    # print("SC_b.EDGES : \t", SC_b.edges)
-    # print("\n2. SC_a: \t", SC_a)
-    # print("SC_a.EDGES : \t", SC_a.edges)
 
     SC_ad = nx.adjacency_matrix(SC_a)
     SC_A = SC_ad.todense()
@@ -1236,15 +1054,10 @@ def main(args=None):
     pos_cont, node_list_rdy, IDX = CONTRACTED_POS(pos, SC_A_C, C, node_list_C, list_on_2nd_line)
     pos_cont = CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list_C, node_list_rdy, list_on_2nd_line, "C")
     pos_cont = CONTRACTED_POS_CONT_FILL(pos_cont, SC)
-    print(pos_cont)
-
-    
-    
     # print(pos_cont)
 
-    print("=========================================================")
-    print("Creating Contracted Production Network on the 0-axis SC_f")
-    print("=========================================================")
+
+
     SC_f = nx.DiGraph()
     list_pos_cont = list(pos_cont.items())
     length = len(list_pos_cont)
@@ -1301,20 +1114,11 @@ def main(args=None):
         SC_g.add_edge(n, 'OEM')
         SC_f.add_edge(n, 'OEM')
 
-    # for node_up in SC_g.nodes:
-    #     for node_down in SC_g.nodes:
-    #         if(("R" in node_up and "R" in node_down) or ("S" in node_up and "S" in node_down)) and (pos_cont[node_up][0] == pos_cont[node_down][0]) and node_up != node_down:
-    #             print(node_up, node_down)
-    #             SC_g.add_edge(node_up, node_down)
-    #             SC_f.add_edge(node_up, node_down)
 
 
     # all_path = [p for p in nx.all_simple_paths(SC_g, source='Start', target = 'OEM')]
     # orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
     # print(all_path)
-    print("=========================================================")
-    print("\t\tFinding all possible path in SC_g")
-    print("=========================================================")
 
     orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
     all_path = [p for p in nx.all_simple_paths(SC_g, source='Start', target = 'OEM')]
@@ -1322,14 +1126,10 @@ def main(args=None):
     
     orig_path = orig_path[0]
     criticality_1st_graph = cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path)
-    
     # print("\ncriticality_1st_graph: ", criticality_1st_graph, "\n")
 
     
 
-    print("=========================================================")
-    print("\tCalculating criticality and add into dict")
-    print("=========================================================")
     criticality_matrix = {}
     SC_i = SC_g.copy()
     SC_j = SC_f.copy()
@@ -1354,7 +1154,7 @@ def main(args=None):
         SC_i = SC_g.copy()
     
 
-    print(criticality_matrix)
+    # print(criticality_matrix)
 
 
 
@@ -1413,7 +1213,6 @@ def main(args=None):
     colors = list('rgbcmyk')
     DC = nx.algorithms.degree_centrality(SC_g)
     DC = remove_parallel_node(DC)
-    print(len(DC))
     BC = nx.algorithms.betweenness_centrality(SC_g)
     BC = remove_parallel_node(BC)
     EC = nx.algorithms.eigenvector_centrality(SC_g, max_iter = 10000)
@@ -1493,10 +1292,9 @@ def main(args=None):
     degree_count = nx.degree_histogram(SC)
     
     # plt.figure(4)
-    fit = powerlaw.Fit(degree_sequence)
-    print(fit.power_law.alpha)
-    print(fit.power_law.xmin)
-    p_comp_e = fit.distribution_compare('power_law', 'exponential')
+    fit_network = powerlaw.Fit(degree_sequence)
+    
+    p_comp_e = fit_network.distribution_compare('power_law', 'exponential')
     # print(p_comp_e)
     if (p_comp_e[0] > 0) and (p_comp_e[1] >= 0.5):
         p_e = 'Power Law'
@@ -1507,7 +1305,7 @@ def main(args=None):
     elif (p_comp_e[0] < 0) and (p_comp_e[1] <0.5):
         p_e = 'better Exponential, but not a certain answer'
 
-    p_comp_ln = fit.distribution_compare('power_law', 'lognormal')
+    p_comp_ln = fit_network.distribution_compare('power_law', 'lognormal')
     # print(p_comp_ln)
     if (p_comp_ln[0] > 0) and (p_comp_ln[1] >= 0.5):
         p_ln = 'Power Law'
@@ -1519,15 +1317,15 @@ def main(args=None):
         p_ln = 'better Lognormal, but not a certain answer'
 
     # if not (p_e == 'Power Law' or 'better Power Law, but not a certain answer') and ((p_ln == 'Power Law' or 'better Power Law, but not a certain answer')):
-        
+
     # print("R:", R, "S:", S, "C:", C, "M:", M, "pR", pR, "pS", pS, "pC", pC, "pM", pM, fit.fixed_xmin, fit.xmin)
     plt.subplot(2,2,1)
     plt.title('Power Law PDF Fitting') 
-    fit.plot_pdf(color = 'b', marker = 'o', linewidth = 2)
+    fit_network.plot_pdf(color = 'b', marker = 'o', linewidth = 2)
     
     plt.subplot(2,2,3)
     plt.title('Power Law CCDF Fitting') 
-    fit.plot_ccdf(color = 'b', marker = 'o', linewidth = 2)
+    fit_network.plot_ccdf(color = 'b', marker = 'o', linewidth = 2)
 
     plt.subplot(2,2,4)
     plt.text(0.01, 0.9, "Checking if Poisson Distribution...")
@@ -1535,7 +1333,7 @@ def main(args=None):
     plt.text(0.01, 0.7, "Mean :%s"%np.mean(degree_sequence))
     plt.text(0.01, 0.55, 'Comparing with exponential Distribution...')
     plt.text(0.01, 0.45, '%s'%p_e)
-    plt.text(0.01, 0.35, 'Comparing with exponential Distribution...')
+    plt.text(0.01, 0.35, 'Comparing with lognormal Distribution...')
     plt.text(0.01, 0.25, '%s'%p_ln)
     plt.text(0.01, 0.1, 'R:{}, S:{}, C:{}, M:{}, E_12:{}, E_23:{}, E_34:{}'.format(R, S, C, M, E_12, E_23, E_34))
     # plt.text(0.01, 0.1, 'R:{}, S:{}, C:{}, M:{}, pR:{}, pS:{}, pC:{}, pM:{}'.format(R, S, C, M, pR, pS, pC, pM))
@@ -1563,35 +1361,28 @@ def main(args=None):
     print("====length perform_SC_b: ", len(perform_SC_b), type(perform_SC_b), "====")
     reg_result_perf = multi_linear_reg(perform_SC_b, corr_x, corr_y, corr_z)
     print(reg_result_perf.summary())
-    with open('1x_data_perf.txt', 'w') as file:
-        data = str(reg_result_perf.summary())
-        file.write(data)
 
     print("====length of criticality_matrix: ", len(criticality_matrix), type(criticality_matrix), "====")
     reg_result_crit = multi_linear_reg(criticality_matrix, corr_x, corr_y, corr_z)
     print(reg_result_crit.summary())
-    with open('1x_data_crit.txt', 'w') as file:
-        data = str(reg_result_crit.summary())
+    with open('1x_data.txt', 'a+') as file:
+        data = 'R:{}\nS:{}\nC:{}\nM:{}\npR:{}\npS:{}\npC:{}\npM:{}\nE_12:{}\nE_23:{}\nE_34:{}\nrou:{}\n\n'.format(R, S, C, M, pR, pS, pC, pM, E_12, E_23, E_34, rou)
+        data = data + 'Comparing power-law with exponential Distribution...{}\n'.format(p_e)
+        data = data + 'Comparing power-law with lognormal Distribution...{}\n\n'.format(p_ln)
+        data = data + 'alpha:{}, xmin:{}\n\n'.format(fit_network.power_law.alpha, fit_network.power_law.xmin)
+        data = data + '=============================================================================='
+        data = data + '\t\t\t\tPerformance'
+        data = data + str(reg_result_perf.summary())
+        data = data + '\n\n'
+        data = data + '=============================================================================='
+        data = data + '\t\t\t\tCriticality'
+        data = data + str(reg_result_crit.summary())
+        data = data + '\n\n'
+        data = data + '---------------------------------------------------------------------------------------{}\n\n'.format(num_of_fig)
         file.write(data)
+    file.close()
 
-    # plt.figure(4)
-    # pos_G = nx.shell_layout(G, scale = 1)
-    # nx.draw_networkx(G, pos = pos_G)
-    # nx.draw_networkx_nodes(G, pos = pos_G, node_size = 500, node_color = 'black', node_shape = 'o')
-    # nx.draw_networkx_nodes(G, pos = pos_G, node_size = 450, node_color = 'w', node_shape = 'o')
-    
-    # perform_pos = pos.copy()
-    # for i in pos:
-    #     perform_pos[i][1] += 0.1
-    #     print(perform_pos[i])
-    # nx.draw_networkx_labels(SC, pos = perform_pos, labels = mapping_perform)
-
-    # STILL NEED A NEW POSITION TO SHOW THE CONTRACTED PRODUCTION NETWORK
-    # print("SC.NODES : \t", SC.nodes)
-    # for j in range():
-    # print(SC.number_of_nodes())
-    
-    
+  
 
     jls_extract_var = plt
     jls_extract_var.show()
