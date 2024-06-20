@@ -10,6 +10,7 @@ import openpyxl as opxl
 import os
 import powerlaw
 import math
+import time
 from matplotlib.collections import LineCollection
 from scipy import sparse
 from scipy import optimize
@@ -35,14 +36,15 @@ M = int(2  * 1)   # Ammount of [TIER I]: modules                 *  (Multi-Param
 # pC = 0.01
 # pM = 0.001
 pR = 0.05 * 1   # the probability would not change
-pS = 0.03 * 1
-pC = 0.00 * 1
-pM = 0.00 * 1
+pS = 0.025 * 1
+pC = 0.02 * 1
+pM = 0.02 * 1
 E_12 = R  / 2 * 1 # = #(node von R) / 2                      * (Multi-Parameter // 2)
 E_23 = S  / 2 * 1 # = #(node von S) / 2                      * (Multi-Parameter // 2)
 E_34 = M  / 2 * 1 # = #(node von M) / 2                      * (Multi-Parameter // 2)
 pE = 0
 rou = 0.85
+num_of_fig = 100
 
 def multiply(*list):
     result = 1
@@ -850,43 +852,12 @@ def ADD_EDGE_TO_NEXT_TIER(node, string1, number, next_tier, SC_d, SC_b):
 def comparing_critical_node(all_path, orig_path):
     # print("orig_path:", orig_path)
     critical_node = [node for node in orig_path]
-    parameter = ['A']
-    criticality = []
-    node_in_path_l = []
-    for i in range(len(all_path)):
-        node_in_path_i = [node for node in all_path[i]]
-        # print("node_in_path_i:", node_in_path_i)
-        node_in_path_j = [node for node in node_in_path_i if node not in orig_path]
-        # print("node_in_path_j:", node_in_path_j)
-        node_in_path_k = [node for node in orig_path if node not in node_in_path_i]
+    
+    for p in all_path:
+        # print("p:", p)
+        node_in_path_k = [node for node in orig_path if node not in p]
         # print("node_in_path_k:", node_in_path_k)
-        # if len(node_in_path_k)>1 and len(node_in_path_j) == 0:
-        #     print("-------len(node_in_path_k)>1-------")
-        #     print("node_in_path_j", node_in_path_j)
-        #     print("node_in_path_k", node_in_path_k)
-        #     node_in_path_l_idx = [idx for idx, val in enumerate(orig_path) if val in node_in_path_k]
-        #     for l in node_in_path_l_idx:
-        #         path = [orig_path[l], [[orig_path[l]]]]
-        #         if(path not in node_in_path_l):
-        #             node_in_path_l.append(path)
-        #     print("node_in_path_l", node_in_path_l)
-        #     print("-----------------------------------")
-        # elif(len(node_in_path_j)<3 and len(node_in_path_j)>0) and len(node_in_path_k)<2:
-        #     print("-------len(node_in_path_j)<3-------")
-        #     print("node_in_path_j", node_in_path_j)
-        #     print("node_in_path_k", node_in_path_k)
-        #     if(parameter == node_in_path_k):
-        #         print("path:", path)
-        #         path.append(node_in_path_j)
-        #         node_in_path_l.remove(node_in_path_l[-1])
-        #         print("path:", path)
-        #     elif(parameter != node_in_path_k):
-        #         path = [node_in_path_j]
-        #     node_in_path_l.append([node_in_path_k[0], path])
-        #     parameter = node_in_path_k
-        #     print("-----------------------------------")
         critical_node = [node for node in critical_node if node not in node_in_path_k]
-    # print("critical_node:", critical_node)
     return critical_node #, node_in_path_l
 
 
@@ -969,9 +940,10 @@ def dual_sourcing_at_diversified_suppliers(SC_a, pos_cont, node_list_pos_cont):
             key = [key for key, value in pos_cont.items() if value == coord]
         if(key != last_key):
             key_0 = [node_list_pos_cont[j-1] for j, val in enumerate(node_list_pos_cont) if val == key[0]]
-            key_1 = [key for key, value in pos_cont.items() if value == (pos_cont[key_0[0]][0] - 1, 0)]
+            new_x = pos_cont[key_0[0]][0]
+            key_1 = [key for key, value in pos_cont.items() if value == (new_x - 1, 0)]
             while(len(key_1) == 0):
-                new_x = pos_cont[key_0[0]][0] - 1
+                new_x = new_x - 1
                 key_1 = [key for key, value in pos_cont.items() if value == (new_x - 1, 0)]
             key_2 = [key for key, value in pos_cont.items() if value[0] == pos_cont[key_1[0]][0] and value[1] != 0]
             if len(key_2) == 0:
@@ -990,6 +962,8 @@ def cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path):
     # critical_node, node_in_path_l = comparing_critical_node(all_path, orig_path)
     critical_node = comparing_critical_node(all_path, orig_path)
     # print("critical_node:", critical_node)
+
+
     paths = []
     for idx in range(len(critical_node)-1):
         if(critical_node[idx+1] not in SC_f.neighbors(critical_node[idx])):
@@ -997,7 +971,9 @@ def cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path):
             target = critical_node[idx+1]
             p = [p[1:-1] for p in nx.all_simple_paths(SC_g, source = source, target = target)]
             paths.append(p)
+    
     # print("paths:", paths)
+
 
     criticality_crit = math.pow(rou, len(critical_node))
     criticality = []
@@ -1006,6 +982,7 @@ def cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path):
         for path in p:
             path_crit.append(math.pow(rou, len(path)))
         criticality.append(path_crit)
+    
     
     crit = []
     for n in range(len(criticality)):
@@ -1021,6 +998,7 @@ def cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path):
             var1.append(prod)
         crit.append(var1)
 
+
     crit_1_ord = []
     for i in range(len(crit)):
         summ = sum(crit[i])
@@ -1029,6 +1007,17 @@ def cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path):
     criticality_1st = criticality_crit * multiply(*crit_1_ord)
     
     return criticality_1st
+
+def remove_parallel_node(DC):
+    DC_n = DC.copy()
+    for data in DC.items():
+        if('|' in data[0]) and ('S' not in data[0]) and ('R' not in data[0]):
+            idx_of_bar = data[0].index('|')
+            if(data[0][idx_of_bar-1] == data[0][idx_of_bar+1]):
+                DC_n.pop(data[0])
+        elif(data[0] == 'Start') or (data[0] == 'OEM'):
+            DC_n.pop(data[0])
+    return DC_n
 
 def main(args=None):
      
@@ -1253,7 +1242,9 @@ def main(args=None):
     
     # print(pos_cont)
 
-    
+    print("=========================================================")
+    print("Creating Contracted Production Network on the 0-axis SC_f")
+    print("=========================================================")
     SC_f = nx.DiGraph()
     list_pos_cont = list(pos_cont.items())
     length = len(list_pos_cont)
@@ -1283,7 +1274,6 @@ def main(args=None):
     
     pos_cont = dict(list_pos_cont)
     pos_cont.update(pos_cont2)
-    print(pos_cont)
     
     node_list_pos_cont = []
     for i in list_pos_cont:
@@ -1322,22 +1312,31 @@ def main(args=None):
     # all_path = [p for p in nx.all_simple_paths(SC_g, source='Start', target = 'OEM')]
     # orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
     # print(all_path)
-    
+    print("=========================================================")
+    print("\t\tFinding all possible path in SC_g")
+    print("=========================================================")
+
+    orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
     all_path = [p for p in nx.all_simple_paths(SC_g, source='Start', target = 'OEM')]
     # print(len(all_path))
-    orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
+    
     orig_path = orig_path[0]
-    # print(len(orig_path))
     criticality_1st_graph = cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path)
+    
     # print("\ncriticality_1st_graph: ", criticality_1st_graph, "\n")
 
+    
+
+    print("=========================================================")
+    print("\tCalculating criticality and add into dict")
+    print("=========================================================")
     criticality_matrix = {}
     SC_i = SC_g.copy()
     SC_j = SC_f.copy()
     node_SC_i = list(SC_i.nodes())
     for idx_i in range(len(SC_i)-2):
         node_to_remove = node_SC_i[idx_i]
-        if('|' in node_to_remove):
+        if('|' in node_to_remove) and ('S' not in node_to_remove) and ('R' not in node_to_remove):
             idx_of_bar = node_to_remove.index('|')
             if(node_to_remove[idx_of_bar-1] == node_to_remove[idx_of_bar+1]):
                 continue
@@ -1346,13 +1345,16 @@ def main(args=None):
         orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
         orig_path = orig_path[0]
         # print("len(all_path) = ", len(all_path), "len(orig_path) = ", len(orig_path))
-        if(node_to_remove not in orig_path):
+        if(node_to_remove not in orig_path) and (len(all_path) != 0):
             orig_path = all_path[0]
         criticality_1st_without_i = cal_criticality(SC_i, SC_f, pos_cont, all_path, orig_path)
         # print("criticality_1st_without_", node_to_remove, criticality_1st_without_i)
         diff = criticality_1st_graph - criticality_1st_without_i
         criticality_matrix[node_to_remove] = diff
         SC_i = SC_g.copy()
+    
+
+    print(criticality_matrix)
 
 
 
@@ -1368,7 +1370,7 @@ def main(args=None):
 
     
     
-    
+    '''
     # pos_cont = CONTRACTED_POS_CONT_FILL(pos_cont, SC, idx_R)
     plt.figure(2)
     colors = list('rgbcmyk')
@@ -1404,7 +1406,51 @@ def main(args=None):
             y = y + 10e-5
         plt.scatter(x, y, color = 'lightblue')
     plt.subplot(2,2,4)
+    '''
+    SC_i = SC_g.copy()
+
+    plt.figure(2, figsize = (12, 6))
+    colors = list('rgbcmyk')
+    DC = nx.algorithms.degree_centrality(SC_g)
+    DC = remove_parallel_node(DC)
+    print(len(DC))
+    BC = nx.algorithms.betweenness_centrality(SC_g)
+    BC = remove_parallel_node(BC)
+    EC = nx.algorithms.eigenvector_centrality(SC_g, max_iter = 10000)
+    EC = remove_parallel_node(EC)
+    HC = nx.hits(SC_g)[1]
+    HC = remove_parallel_node(HC)
     
+    
+    plt.subplot(2,2,1)
+    plt.title('Degree Centrality')
+    for data in DC.items():
+        x = data[0]
+        y = data[1]
+        if(y == 0):
+            y = y + 10e-5
+        plt.scatter(x, y, color = 'lightblue')
+    # print("BC | ", BC)
+    plt.subplot(2,2,2)
+    plt.title('Betweenness Centrality')
+    for data in BC.items():
+        x = data[0]
+        y = data[1]
+        if(y == 0):
+            y = y + 10e-5
+        plt.scatter(x, y, color = 'lightblue')
+    # print("EC | ", EC)
+    plt.subplot(2,2,3)
+    plt.title('Eigenvector Centrality')
+    for data in EC.items():
+        x = data[0]
+        y = data[1]
+        if(y == 0):
+            y = y + 10e-5
+        plt.scatter(x, y, color = 'lightblue')
+    plt.subplot(2,2,4)
+    
+
     corr_x = np.array(list(DC.values()))
     corr_y = np.array(list(BC.values()))
     corr_z = np.array(list(EC.values()))
@@ -1428,6 +1474,7 @@ def main(args=None):
     plt.text(0.475, 0.3, '%.2f'%r_BC_EC)
     plt.text(0.675, 0.3, '%.2f'%r_BC_HC)
     plt.text(0.675, 0.1, '%.2f'%r_EC_HC)
+    plt.savefig('./centrality_correlation_1x_CPN_{}'.format(num_of_fig))
     
    
     # STILL NEED TO RESET THE CALCULATION FORMULAR FOR CRITICALITY
@@ -1471,7 +1518,8 @@ def main(args=None):
     elif (p_comp_ln[0] < 0) and (p_comp_ln[1] < 0.5):
         p_ln = 'better Lognormal, but not a certain answer'
 
-    
+    # if not (p_e == 'Power Law' or 'better Power Law, but not a certain answer') and ((p_ln == 'Power Law' or 'better Power Law, but not a certain answer')):
+        
     # print("R:", R, "S:", S, "C:", C, "M:", M, "pR", pR, "pS", pS, "pC", pC, "pM", pM, fit.fixed_xmin, fit.xmin)
     plt.subplot(2,2,1)
     plt.title('Power Law PDF Fitting') 
@@ -1491,7 +1539,7 @@ def main(args=None):
     plt.text(0.01, 0.25, '%s'%p_ln)
     plt.text(0.01, 0.1, 'R:{}, S:{}, C:{}, M:{}, E_12:{}, E_23:{}, E_34:{}'.format(R, S, C, M, E_12, E_23, E_34))
     # plt.text(0.01, 0.1, 'R:{}, S:{}, C:{}, M:{}, pR:{}, pS:{}, pC:{}, pM:{}'.format(R, S, C, M, pR, pS, pC, pM))
-    
+
     G = nx.scale_free_graph(R+S+C+M, alpha = 0.5, beta = 0.3, gamma = 0.2)
     # plot_degree_dist(G, 2, 'red')
     probability_mass_fct(G, SC_b)
@@ -1510,14 +1558,21 @@ def main(args=None):
     plt.subplot(2,2,3)
     plt.title('Power Law CCDF Fitting') 
     fit.plot_ccdf(color = 'r', marker = 'o', linewidth = 2)
+    plt.savefig('./power_law_distribution_1x_CPN_{}'.format(num_of_fig))
 
     print("====length perform_SC_b: ", len(perform_SC_b), type(perform_SC_b), "====")
     reg_result_perf = multi_linear_reg(perform_SC_b, corr_x, corr_y, corr_z)
     print(reg_result_perf.summary())
+    with open('1x_data_perf.txt', 'w') as file:
+        data = str(reg_result_perf.summary())
+        file.write(data)
 
     print("====length of criticality_matrix: ", len(criticality_matrix), type(criticality_matrix), "====")
     reg_result_crit = multi_linear_reg(criticality_matrix, corr_x, corr_y, corr_z)
     print(reg_result_crit.summary())
+    with open('1x_data_crit.txt', 'w') as file:
+        data = str(reg_result_crit.summary())
+        file.write(data)
 
     # plt.figure(4)
     # pos_G = nx.shell_layout(G, scale = 1)
