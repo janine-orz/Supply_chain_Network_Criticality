@@ -1,6 +1,16 @@
+'''
+Bachelor Arbeit 'Criticality Analysis on Random Network' based on suppy chain model
+from Jianing(Janine) Ye, 67607, Wirtschaftsmathematik
+
+we used the networkx package as the main package to generate the network,
+then the regression analysis from package statsmodels.api,
+as well as the correlation analysis from numpy.
+'''
+
 import networkx as nx
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
+import pandas as pd
 import random
 import bezier
 import string
@@ -8,6 +18,7 @@ import itertools
 import collections
 import openpyxl as opxl
 import os
+import sys
 import powerlaw
 import math
 import time
@@ -17,24 +28,12 @@ from scipy import optimize
 import numpy as np
 import statsmodels.api as sm
 
-'''
-DONE: 
-    * to show the network in a multipartite_layout
-    * to set a redundance in one TIER and rename the name of every node which has a redudanced node
-    * deal with the networksize = [12, 20, 8, 3]
-TO DO:
-    * probability still need to consider how much would be the best choice (maybe need a small test)
-    * still need to consider how to present the relationship of a parallel manufactory
-'''
 
+# Global variable that we used in G(n,m)model and G(n,p)model
 R = int(8  * 1)   # Ammount of [TIER IV]: raw material           *  Multi-Parameter
 S = int(20 * 1)   # Ammount of [TIER III]: semifinisched products*  Multi-Parameter
 C = int(4  * 1)   # Ammount of [TIER II]: components             *  Multi-Parameter
 M = int(2  * 1)   # Ammount of [TIER I]: modules                 *  (Multi-Parameter // 2)
-# pR = 0.06
-# pS = 0.01
-# pC = 0.01
-# pM = 0.001
 pR = 0.05 * 1   # the probability would not change
 pS = 0.025 * 1
 pC = 0.02 * 1
@@ -43,11 +42,15 @@ E_12 = R  / 2 * 1 # = #(node von R) / 2                      * (Multi-Parameter 
 E_23 = S  / 2 * 1 # = #(node von S) / 2                      * (Multi-Parameter // 2)
 E_34 = M  / 2 * 1 # = #(node von M) / 2                      * (Multi-Parameter // 2)
 pE = 0
+
+# the occupation probability, later will be set as 0.9 as in the paper
 rou = 0.85
+
+# the number of the figure that we want to output
 num_of_fig = input()
 print(type(num_of_fig))
 
-
+# Cummulatvie product function
 def multiply(*list):
     result = 1
     for num in list:
@@ -91,19 +94,12 @@ def TRANS(R, S, C, M, pR, pS, pC, pM, E_12, E_23, E_34):
     T2 = GNP(C, pC, "C-")
     T2 = RENAME(T2, C, "C-")
 
-    # ------------ TO DO ------------ # 
-    # we should get only one parallel redundancy for one C
-
     # create the random network with the possibility of the part [TIER III]
     T3 = GNP(S, pS, "S-")
     T3 = RENAME(T3, S, "S-")
     # create the random network with the possibility of the part [TIER IV]
     T4 = GNP(R, pR, "R-")
     T4 = RENAME(T4, R, "R-")
-
-    # add one nodes in both [TIER I] & [TIER II]
-    # T1.add_node(M+1)
-    # T2.add_node(C+1)
 
     # set both nodes in T1 and T2 into the Graph T
     SC.add_nodes_from(T1.nodes, layer = 3)
@@ -143,6 +139,7 @@ def BIPARTITE(SC, T1, T2, E):
     return SC, T1, T2
 
 
+# rename the nodes with "node name"|"dual sourcing name"...
 def RENAME(T1, M, string):
     new_name = {}
     redundanced_node = []
@@ -170,6 +167,7 @@ def RENAME(T1, M, string):
     return T1
 
 
+# arrange the node into multi-partite position
 def POSITION(SC, par):
     pos = nx.multipartite_layout(SC, subset_key = 'layer', align = "vertical", scale = 10)
 
@@ -185,6 +183,7 @@ def POSITION(SC, par):
     return pos
 
 
+# calculate the performan of the graph with and without one node
 def PERFORM(SC, T1, T2, T3, T4, without_node):
 
     n1list = list(T1.nodes)
@@ -250,6 +249,8 @@ def CRITICAL_1(mapping_perform, SC, T1, T2, T3, T4):
     
     return mapping_perform
 
+
+# adding nodes to the node list
 def ADD_IN_LIST(nlist, T1):
 
     n1list = list(T1.nodes)
@@ -259,6 +260,8 @@ def ADD_IN_LIST(nlist, T1):
     
     return nlist
 
+
+# looking for the adjacent node in one tier in the graph
 def ADJ_IN_ONE_TIER(SC):
     node_list_a = []
     for node in SC.nodes:
@@ -266,10 +269,11 @@ def ADJ_IN_ONE_TIER(SC):
             if (node == edge[0]) or (node == edge[1]):
                 node_list_a.append(node)
     node_list_a = list(set(node_list_a))
-    # print("2. node_list_a : ", node_list_a)
     return node_list_a
 
-def NUM_OF_NODE_AIOT(node_list_a): # AIOT: adjacent in on tier
+
+# checking in each ter how many adjacent nodes there is
+def NUM_OF_NODE_AIOT(node_list_a): # AIOT: adjacent in one tier
     number_of_node_R = 0
     number_of_node_S = 0
     number_of_node_C = 0
@@ -282,15 +286,18 @@ def NUM_OF_NODE_AIOT(node_list_a): # AIOT: adjacent in on tier
             number_of_node_C += 1
     return number_of_node_R, number_of_node_S, number_of_node_C
 
+
+# printing the node list according to there first letter
 def NODE_LIST(SC, string):
     node_list = []
     for node in SC.nodes:
         if (node[0] == string):
             node_list.append(node)
     node_list = list(reversed(node_list))
-    # print("2, node_list:" , node_list)
     return node_list
 
+
+# trans the network in to matrix
 def NETW_INTO_MATRIX(SC_a, R, S, C):
     SC_ad = nx.adjacency_matrix(SC_a)
     SC_A = SC_ad.todense()
@@ -300,26 +307,26 @@ def NETW_INTO_MATRIX(SC_a, R, S, C):
     
     SC_A_R = [row[:R] for row in SC_A_flip180[:R]]
     SC_A_R = np.array(SC_A_R)
-    # print(SC_A_R)
     SC_A_R_flip180 = SC_A_R.reshape(SC_A_R.size)
     SC_A_R_flip180 = SC_A_R_flip180[::-1]
     SC_A_R_flip180 = SC_A_R_flip180.reshape((R, R))
-    # print("SC_A_R : \n", SC_A_R_flip180)
+
     SC_A_S = [row[R:(S+R):1] for row in SC_A_flip180[R:(S+R):1]]
     SC_A_S = np.array(SC_A_S)
-    # print(SC_A_S)
     SC_A_S_flip180 = SC_A_S.reshape(SC_A_S.size)
     SC_A_S_flip180 = SC_A_S_flip180[::-1]
     SC_A_S_flip180 = SC_A_S_flip180.reshape((S, S))
-    # print("SC_A_S : \n", SC_A_S_flip180)
+
     SC_A_C = [row[(S+R):(S+R+C):1] for row in SC_A_flip180[(S+R):(S+R+C):1]]
     SC_A_C = np.array(SC_A_C)
     SC_A_C_flip180 = SC_A_C.reshape(SC_A_C.size)
     SC_A_C_flip180 = SC_A_C_flip180[::-1]
     SC_A_C_flip180 = SC_A_C_flip180.reshape((C, C))
-    # print("SC_A_C : \n", SC_A_C_flip180)
+
     return SC_A_R_flip180, SC_A_S_flip180, SC_A_C_flip180
 
+
+# finding all node on the x=0 axis
 def List_at_x_axis(node_list_R, node_list_S, SC_a, SC_d, SC_e, minus_par, pos_cont2, list_on_2nd_line):
     for node in node_list_R:
         list_var = list(SC_d.neighbors(node))
@@ -353,6 +360,8 @@ def List_at_x_axis(node_list_R, node_list_S, SC_a, SC_d, SC_e, minus_par, pos_co
     
     return list_on_2nd_line, SC_e, pos_cont2
 
+
+# finding the parallel supply chain and rearrange their position
 def parallel_supply_chain(node_list_R, node_list_S, SC_a, SC_d, node_list_pos_cont, len_node_list_pos_cont, SC_e, pos_cont, pos_cont2):
     for node in node_list_R:
         list_var = list(SC_d.neighbors(node))
@@ -422,6 +431,8 @@ def parallel_supply_chain(node_list_R, node_list_S, SC_a, SC_d, node_list_pos_co
 
     return pos_cont, SC_e
 
+
+# build the contracted production network
 def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
     print("SC_A:\n", SC_A_R)
     # SC_A_R = [
@@ -435,10 +446,8 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
 
     for i in range(IDX_h):
         for j in range(i, IDX_h):
-            # print(i, ",", j)
             if SC_A_R[i][j] == 1:
                 # the node in the j-th horizontal line directing to the node in the i-th vertical line
-                # print("(H|", j, "---> V|", i, ")", SC_A_R[i][j]) # V: Vertical index, H: Horizontal index
                 if(node_list[j] not in list_on_2nd_line) and (node_list[i] not in list_on_2nd_line):
                     # write down the index of the horizontal line
                     node_hor.append(j)
@@ -454,36 +463,22 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
     # count how many times the element is in the list
     result_ver = collections.Counter(node_ver)
     result_hor = collections.Counter(node_hor)
-    # print("result = ", result)
-    # print("node_ver : ", node_ver)
     var = -100
 
     # if there is no nodes connecting in the same Tier, then STOP
     if(len(node_hor_to_ver) == 0):
-        # if(IDX_h == R):
-            # print("In R there is no nodes connecting in the same Tier")
-        # elif(IDX_h == S):
-            # print("In R there is no nodes connecting in the same Tier")
         return pos, node_list_rdy, IDX_h
     
 
-
     node_mid_h = [x for x in node_hor if x in node_ver]
-    # print("node_mid_h", node_mid_h)
     node_mid_h = sorted(node_mid_h)
-    # print(node_mid_h)
     node_mid_h = list(node_mid_h)
-    # print(node_mid_h)
     node_mid_v = [x for x in node_ver if x in node_hor]
-    # print("node_mid_v:", node_mid_v)
     node_mid_v = sorted(node_mid_v)
-    # print(node_mid_v)
     node_mid_v = list(node_mid_v)
-    # print(node_mid_v)
 
     
     if(len(node_mid_h) != 0):
-        # print("-----len(node_mid_h) != 0-----")
         node_v = [x for x in node_ver if x not in node_mid_v]
         node_h = [x for x in node_hor if x not in node_mid_h]
         result_m_v = collections.Counter(node_mid_v)
@@ -492,16 +487,12 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
         result_h = collections.Counter(node_h)
 
         for node_w in node_mid_h:
-            # print("for ", node_w, " in node_mid_h:")
             var_mid_h = result_hor[node_w]
             var_mid_v = result_ver[node_w]
             node_left = []
             node_right = []
-                
-            # print("var_mid_h\t", var_mid_h, "var_mid_v\t", var_mid_v)
 
             h_list = [j for j,val in enumerate(node_hor) if val == node_w]
-            # print(h_list)
             IDX_v = 0
             param = 0
             for j in h_list:
@@ -510,48 +501,38 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
                 left = [node_hor[j] for j,val in enumerate(node_ver) if val == node_v]
                 if(len(left) > 1):
                     node_left = [node for node in left if node != node_w]
-                    # print("node_left:", node_left)
                 if(node_v not in pos.keys()):
                     pos[node_v] = (IDX_h-1, IDX_v)
                     IDX_v = IDX_v - 1
                     node_list_rdy.append(node_v)
                     param = param + 1
-                    # print("pos[", node_v, "] = ", pos[node_v])
             if(param > 0):
                 IDX_h = IDX_h - 1
             
             if(node_w not in pos.keys()):
-                # print("for ", node_w)
                 pos[node_w] = (IDX_h-1, 0)
                 node_list_rdy.append(node_w)
                 IDX_h = pos[node_w][0]
                 IDX_v = pos[node_w][1]
-                # print("pos[", node_w, "] = ", pos[node_w])
             IDX_v = 0
             for node_s in node_left:
-                # print("for ", node_s, " in node_left:")
                 if(node_s not in pos.keys()):
                     pos[node_s] = (IDX_h, IDX_v - 1)
                     node_list_rdy.append(node_s)
                     IDX_v = pos[node_s][1]
-                    # print("pos[", node_s, "] = ", pos[node_s])
-            
-            
+                        
 
             v_list = [j for j,val in enumerate(node_ver) if val == node_w]
             IDX_v = 0
             param = 0
             for k in v_list:
                 node_u = node_hor_to_ver[k][0]
-                # print("node_u:", node_u)
                 # in node_hor_to_ver: [0]--> horizontal
                 right = [node_ver[j] for j,val in enumerate(node_hor) if val == node_u]
                 if(len(right) > 1):
                     node_right = [node for node in right if node != node_w]
-                    # print("node_right:", node_right)
                     IDX_v_r = 0
                 for node_t in node_right:
-                    # print("for ", node_t, " in node_right:")
                     if(node_t not in pos.keys()):
                         while ((IDX_h-1, IDX_v_r) in pos.values()):
                             IDX_v_r = IDX_v_r - 1
@@ -559,7 +540,6 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
                         node_list_rdy.append(node_t)
                         IDX_v_r = IDX_v_r - 1
                         IDX_h = pos[node_t][0]
-                        # print("pos[", node_t, "] = ", pos[node_t])
                 node_right = []
                 if(node_u not in pos.keys()):
                     if ((IDX_h-1, IDX_v) not in pos.values()):
@@ -568,7 +548,6 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
                     IDX_v = IDX_v - 1
                     node_list_rdy.append(node_u)
                     param = param + 1
-                    # print("pos[", node_u, "] = ", pos[node_u])
             
                 if(param > 0):
                     IDX_h = IDX_h - 1
@@ -580,14 +559,11 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
     for i in range(len(node_ver)):
         node = node_ver[i]
         adjnode = node_hor[i]
-        # print("-----len(node_mid_h) == 0-----")
-        # print("node:", node, "adjnode:", adjnode)
         
         var_node = result_ver[node] # how many times the node is connected in one tier
         var_adjnode = result_hor[adjnode]
         node_right = []
                 
-        # print(var_node, var_adjnode)
         j_list = [j for j,val in enumerate(node_hor) if val == adjnode]
         IDX_v = 0
         param = 0 
@@ -595,7 +571,6 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
             if(node_ver[j] not in pos.keys()):
                 pos[node_ver[j]] = (IDX_h-1, IDX_v)
                 IDX_v = IDX_v - 1
-                # print("pos[", node_ver[j], "] = ", pos[node_ver[j]])
                 param = param + 1
                 node_list_rdy.append(node_ver[j])
         if(param > 0):
@@ -605,17 +580,11 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
         IDX_v = 0
         param = 0 
         for k in k_list:
-            # print("node_k:", node_hor[k])
-            # print("IDX_v before right", IDX_v)
             right = [node_ver[j] for j,val in enumerate(node_hor) if val == node_hor[k]]
-            # print("right", right)
             if(len(right) > 1):
-                # print("if(len(right) > 1)")
                 node_right = [node for node in right if node != node_hor[k]]
                 IDX_v_r = IDX_v
-                # print("node_right:", node_right)
             for node_t in node_right:
-                # print("for ", node_t, " in node_right:")
                 if(node_t not in pos.keys()):
                     while ((IDX_h-1, IDX_v_r) in pos.values()):
                         IDX_v_r = IDX_v_r - 1
@@ -623,17 +592,13 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
                     node_list_rdy.append(node_t)
                     IDX_v_r = IDX_v_r - 1
                     IDX_h = pos[node_t][0]
-                    # print("pos[", node_t, "] = ", pos[node_t])
                     IDX_v = 0
             node_right = []
-            # print("IDX_v after right", IDX_v)
             if(node_hor[k] not in pos.keys()):
-                # print("if(node_hor[k] not in pos.keys())")
                 if ((IDX_h-1, IDX_v) not in pos.values()):
                     IDX_v = 0
                 pos[node_hor[k]] = (IDX_h-1, IDX_v)
                 IDX_v = IDX_v - 1
-                # print("pos[", node_hor[k], "] = ", pos[node_hor[k]])
                 param = param + 1
                 node_list_rdy.append(node_hor[k])
             if(param > 0):
@@ -641,6 +606,8 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
 
     return pos, node_list_rdy, IDX_h
 
+
+# if the nodes are in the same tier then we arrange the position from left to right
 def CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list, node_list_rdy, list_on_2nd_line, string):
     if(string == "R"):
         add_par = 0
@@ -653,20 +620,18 @@ def CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list, node_list_r
         l = list(range(C))
     
     l = np.array([x for x in l if x not in node_list_rdy])
-    # print(l, type(l))
     for x in node_list_rdy:
         key = node_list[x]
         pos_cont_new[key] = (pos_cont[x][0] + add_par, pos_cont[x][1])
-        # print("pos_cont_new[", key, "] = ", pos_cont_new[key])
     for i in l:
-        # print(i)
         key = node_list[i]
         if(pos_cont.get(i) == None) and (key not in list_on_2nd_line):
             pos_cont_new[key] = (IDX - 1 + add_par, 0)
             IDX = IDX - 1
-            # print("pos_cont_new[", key, "] = ", pos_cont_new[key])
     return pos_cont_new
 
+
+# fill the contracted production network with the failed positon for tier M
 def CONTRACTED_POS_CONT_FILL(pos_cont, SC):
     idx = R+S+C
     for node2 in SC.nodes: #reposition the nodes WITHOUT adjazent nodes in one Tier
@@ -675,6 +640,8 @@ def CONTRACTED_POS_CONT_FILL(pos_cont, SC):
             idx += 1
     return pos_cont
 
+
+# connection between tier R and tier C/M, connection between tier S and tier M
 def ADD_EDGE_TO_NEXT_TIER(node, string1, number, next_tier, SC_d, SC_b):
     if (string1 in node):
         neighbours = list(SC_b.neighbors(node))
@@ -706,18 +673,17 @@ def ADD_EDGE_TO_NEXT_TIER(node, string1, number, next_tier, SC_d, SC_b):
             SC_b.add_edge(node, node_rand)
     return SC_d, SC_b
 
+
+# comparing the nodes to find the critical nodes
 def comparing_critical_node(all_path, orig_path):
-    # print("orig_path:", orig_path)
-    critical_node = [node for node in orig_path]
-    
+    critical_node = orig_path
     for p in all_path:
-        # print("p:", p)
-        node_in_path_k = [node for node in orig_path if node not in p]
-        # print("node_in_path_k:", node_in_path_k)
-        critical_node = [node for node in critical_node if node not in node_in_path_k]
-    return critical_node #, node_in_path_l
+        critical_node = list(set(critical_node) - (set(orig_path) - set(p)))
+
+    return critical_node
 
 
+# bubble sourt for the nodes
 def bubble_sort(length, list_pos_cont):
     for i in range(length-1):
         swapped = False
@@ -733,6 +699,8 @@ def bubble_sort(length, list_pos_cont):
         if not swapped:
             return list_pos_cont
 
+
+# plot the degree histogram of the graph
 def plot_degree_dist(G, m, color):
     plt.subplot(2,2,m)
     degree_hist = nx.degree_histogram(G)
@@ -745,6 +713,8 @@ def plot_degree_dist(G, m, color):
     plt.ylabel('Frequency')
     plt.title('Degree Distribution')    
 
+
+# plot the probablity mass function of the graph
 def probability_mass_fct(G, SC):
     plt.subplot(2,2,2)
     deg_G = dict(G.degree()).values()
@@ -775,6 +745,8 @@ def probability_mass_fct(G, SC):
     plt.yscale('log')
     plt.xscale('log')
 
+
+# multiple linear regression analysis
 def multi_linear_reg(perform_SC_b, corr_x, corr_y, corr_z):
     y = np.array(list(perform_SC_b.values()), dtype = 'float')
     x = np.array([list(corr_x), list(corr_y), list(corr_z)], dtype = 'float')
@@ -785,6 +757,8 @@ def multi_linear_reg(perform_SC_b, corr_x, corr_y, corr_z):
     results = sm.OLS(y, X, missing = 'drop').fit()
     return results
 
+
+# rearranging the edges for dual sourcing ata diversified suppliers and place then into a new Digraph 
 def dual_sourcing_at_diversified_suppliers(SC_a, pos_cont, node_list_pos_cont):
     SC_h = nx.DiGraph()
     last_key = 'OEM'
@@ -810,33 +784,32 @@ def dual_sourcing_at_diversified_suppliers(SC_a, pos_cont, node_list_pos_cont):
             last_key = key
     return SC_h
 
-def cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path):
+
+# calculating the criticality which need to be faster but it still took a long time to go through the paths FOR-loop
+def cal_criticality(SC_g, SC_f, critical_node, pos_cont, all_path, orig_path):
+    start_time = time.time()
     criticality_1st = 0
     
-    if(len(all_path) == 0):
+    if(sys.getsizeof(all_path) == 0):
         return criticality_1st
 
-    critical_node = comparing_critical_node(all_path, orig_path)
-
-    paths = []
+    # -----------------------------need to  be faster
+    start_t = time.time()
+    criticality = []
     for idx in range(len(critical_node)-1):
+        path_crit = []
         if(critical_node[idx+1] not in SC_f.neighbors(critical_node[idx])):
             source = critical_node[idx]
             target = critical_node[idx+1]
-            p = [p[1:-1] for p in nx.all_simple_paths(SC_g, source = source, target = target)]
-            paths.append(p)
+            p = [len(p[1:-1]) for p in nx.all_simple_paths(SC_g, source = source, target = target)]
+            if not ((len(p) == 1) and (p[0] == 0)):
+                for l in p:
+                    add_var = math.pow(rou, l)
+                    path_crit.append(add_var)
+                criticality.append(path_crit)
+    end_t = time.time()
     
-    # print("paths:", paths)
-
-
     criticality_crit = math.pow(rou, len(critical_node))
-    criticality = []
-    for p in paths:
-        path_crit = []
-        for path in p:
-            path_crit.append(math.pow(rou, len(path)))
-        criticality.append(path_crit)
-    
     
     crit = []
     for n in range(len(criticality)):
@@ -859,9 +832,13 @@ def cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path):
         crit_1_ord.append(summ)
 
     criticality_1st = criticality_crit * multiply(*crit_1_ord)
+
+    end_time = time.time()
     
     return criticality_1st
 
+
+# parrallel supply chain before calculate the centrality metrics 
 def remove_parallel_node(DC):
     DC_n = DC.copy()
     for data in DC.items():
@@ -872,6 +849,99 @@ def remove_parallel_node(DC):
         elif(data[0] == 'Start') or (data[0] == 'OEM'):
             DC_n.pop(data[0])
     return DC_n
+
+
+# write the OLS regression analysis results into txt file
+def write_into_txt(p_e, p_ln, fit_network, reg_result_perf, reg_result_crit):
+    with open('./BA_data/1x_data_pl_n.txt', 'a+') as file:
+        data = '---------------------------------------------------------------------------------------\n{}\n'.format(num_of_fig)
+        data = data + '---------------------------------------------------------------------------------------\n\n'
+        data = data + 'R:{}\nS:{}\nC:{}\nM:{}\npR:{}\npS:{}\npC:{}\npM:{}\nE_12:{}\nE_23:{}\nE_34:{}\nrou:{}\n\n'.format(R, S, C, M, pR, pS, pC, pM, E_12, E_23, E_34, rou)
+        data = data + 'Comparing power-law with exponential Distribution...{}\n'.format(p_e)
+        data = data + 'Comparing power-law with lognormal Distribution...{}\n\n'.format(p_ln)
+        data = data + 'alpha:{}, xmin:{}\n\n'.format(fit_network.power_law.alpha, fit_network.power_law.xmin)
+        data = data + '=============================================================================='
+        data = data + '\t\t\t\tPerformance'
+        data = data + str(reg_result_perf.summary2(yname = 'Performance', xname = ['DC', 'BC', 'EC', 'const']))
+        data = data + '\n\n'
+        data = data + '=============================================================================='
+        data = data + '\t\t\t\tCriticality'
+        data = data + str(reg_result_crit.summary2(yname = '1st Criticality', xname = ['DC', 'BC', 'EC', 'const']))
+        data = data + '\n\n'
+        data = data + '---------------------------------------------------------------------------------------\n{}\n'.format(num_of_fig)
+        data = data + '---------------------------------------------------------------------------------------\n\n'
+        print("Written successfully...", num_of_fig)
+        file.write(data)
+    file.close()
+
+
+# write the OLS regression analysis results as table into xlsx file
+def write_into_xlsx(reg_result_perf, reg_result_crit, fit_network, sheet_name, p_e, p_ln, idx):
+    coefficients = list(reg_result_perf.params)
+    p_values = list(reg_result_perf.pvalues)
+    r_squared = reg_result_perf.rsquared
+    std_err = list(reg_result_perf.bse)
+    t_values = list(reg_result_perf.tvalues)
+    cond_no = reg_result_perf.condition_number
+
+    wb = opxl.load_workbook('./BA_data/OLS_SUMMARY.xlsx')
+    ws = wb.active
+    ws.title = sheet_name
+    ws.cell(row = idx + 1, column = 1, value = num_of_fig)
+    ws.cell(row = idx + 1, column = 2, value = 'Performance - Regression Analysis')
+    ws.cell(row = idx + 2, column = 2, value = 'Coefficients')
+    ws.cell(row = idx + 2, column = 3, value = 'Standartd Error')
+    ws.cell(row = idx + 2, column = 4, value = 't-values')
+    ws.cell(row = idx + 2, column = 5, value = 'P-values')
+    ws.cell(row = idx + 2, column = 6, value = 'R-squared')
+    ws.cell(row = idx + 4, column = 6, value = 'Cond.No.')
+    
+    ws.cell(row = idx + 2, column = 1, value = 'alpha')
+    ws.cell(row = idx + 3, column = 1, value = fit_network.power_law.alpha)
+    ws.cell(row = idx + 4, column = 1, value = 'xmin')
+    ws.cell(row = idx + 5, column = 1, value = fit_network.power_law.xmin)
+
+    for i in range(len(coefficients)):
+        ws.cell(row = idx + i+3, column = 2, value = coefficients[i])
+        ws.cell(row = idx + i+3, column = 3, value = std_err[i])
+        ws.cell(row = idx + i+3, column = 4, value = t_values[i])
+        ws.cell(row = idx + i+3, column = 5, value = p_values[i])
+    ws.cell(row = idx + 3, column = 6, value = r_squared)
+    ws.cell(row = idx + 5, column = 6, value = cond_no)
+
+    # ===================== #
+
+    coefficients = list(reg_result_crit.params)
+    p_values = list(reg_result_crit.pvalues)
+    r_squared = reg_result_crit.rsquared
+    std_err = list(reg_result_crit.bse)
+    t_values = list(reg_result_crit.tvalues)
+
+    # ws.cell(row = idx + 7, column = 1, value = num_of_fig)
+    ws.cell(row = idx + 1, column = 8, value = 'Criticality - Regression Analysis')
+    ws.cell(row = idx + 2, column = 8, value = 'Coefficients')
+    ws.cell(row = idx + 2, column = 9, value = 'Standartd Error')
+    ws.cell(row = idx + 2, column = 10, value = 't-values')
+    ws.cell(row = idx + 2, column = 11, value = 'P-values')
+    ws.cell(row = idx + 2, column = 12, value = 'R-squared')
+    ws.cell(row = idx + 4, column = 12, value = 'Cond.No.')
+
+    for i in range(len(coefficients)):
+        ws.cell(row = idx + i+3, column = 8, value = coefficients[i])
+        ws.cell(row = idx + i+3, column = 9, value = std_err[i])
+        ws.cell(row = idx + i+3, column = 10, value = t_values[i])
+        ws.cell(row = idx + i+3, column = 11, value = p_values[i])
+    ws.cell(row = idx + 3, column = 12, value = r_squared)
+    ws.cell(row = idx + 5, column = 12, value = cond_no)
+
+    ws.cell(row = idx + 7, column = 2, value = 'PL or E')
+    ws.cell(row = idx + 7, column = 3, value = p_e)
+    ws.cell(row = idx + 7, column = 8, value = 'PL or LN')
+    ws.cell(row = idx + 7, column = 9, value = p_ln)
+    
+    print("Written successfully...", num_of_fig)
+
+    wb.save('./BA_data/OLS_SUMMARY.xlsx')
 
 def main(args=None):
      
@@ -894,12 +964,9 @@ def main(args=None):
     mapping_perform = CRITICAL_1(mapping_perform, SC_a, T1, T2, T3, T4)
     mapping_perform = CRITICAL_1(mapping_perform, SC_b, T1, T2, T3, T4)
     perform_SC_b = mapping_perform
-    mapping_perform = CRITICAL_1(mapping_perform, SC, T1, T2, T3, T4)
-    # print("=====after CRITICAL_1=====")
-    
+    mapping_perform = CRITICAL_1(mapping_perform, SC, T1, T2, T3, T4)   
 
 
-    # plt.figure(2, figsize = (10, 6))
 
     edge = SC_b.edges
     edgelist= list(edge)
@@ -933,19 +1000,15 @@ def main(args=None):
         node1 = edge1[0]
         node2 = edge1[1]
         par = 0
-        # print("node1", node1, "node2", node2)
         for edge2 in SC.edges: # for edges in different tiers
             node3 = edge2[0]
             node4 = edge2[1]
-            # print("node3", node3, "node4", node4)
             if(node1 == node3): 
                 # if the starting point of two edges are the same
                 # then connect the other nodes in the same tier into the next tier
-                # print("adding to SC & SC_b edge (", node2, "---- ", node4,")")
                 SC.add_edge(node2, node4)
                 SC_b.add_edge(node2, node4)
             elif(node2 == node3):
-                # print("adding to SC & SC_b edge (", node1, "---- ", node4,")")
                 SC.add_edge(node1, node4)
                 SC_b.add_edge(node1, node4)
     for edge in SC_b.edges:
@@ -954,7 +1017,6 @@ def main(args=None):
     
     SC_c = SC_b.copy()
     edges = SC.edges()
-    # print("edges : ", edges)
     SC_d = SC_c.copy()
     # ADDING AN EXTRA POSSIBILITY CONTAINS ALL NODES ON THE RIGHT HANDSIDE
     S_C_M_node_list = []
@@ -966,9 +1028,7 @@ def main(args=None):
     C_M_node_list.extend(M_node_list)
     for node in SC_a.nodes:
         SC_d, SC_b = ADD_EDGE_TO_NEXT_TIER(node, "R", S+C+M, S_C_M_node_list, SC_d, SC_b) 
-        # SC_d, SC_b = ADD_EDGE_TO_NEXT_TIER(node, "R", S, S_node_list, SC_d, SC_b) 
         SC_d, SC_b = ADD_EDGE_TO_NEXT_TIER(node, "S", C+M, C_M_node_list, SC_d, SC_b)
-        # SC_d, SC_b = ADD_EDGE_TO_NEXT_TIER(node, "S", C, C_node_list, SC_d, SC_b)
         SC_d, SC_b = ADD_EDGE_TO_NEXT_TIER(node, "C", M, M_node_list, SC_d, SC_b)
     SC_d.remove_edges_from(edges)
 
@@ -982,10 +1042,6 @@ def main(args=None):
     
     SC_A_R = [row[:R] for row in SC_A_flip180[:R]]
     SC_A_R = np.array(SC_A_R)
-    # print(SC_A_R)
-    
-    # print("\n3. SC_a: \t", SC_a)
-    # print("SC_a.EDGES : \t", SC_a.edges)
     
     
     plt.figure(1)
@@ -1000,7 +1056,6 @@ def main(args=None):
     pos_cont = {}
     # check how many nodes are adjacent to another node in its tier    
     node_list_a = ADJ_IN_ONE_TIER(SC_a)
-    # print(node_list_a)
     
     # number of node in one Tier that is adjacent
     number_of_node_R, number_of_node_S, number_of_node_C = NUM_OF_NODE_AIOT(node_list_a)
@@ -1008,19 +1063,15 @@ def main(args=None):
     idx_R = number_of_node_R
     idx_S = number_of_node_R + number_of_node_S
     idx_C = number_of_node_R + number_of_node_S + number_of_node_C
-    # print(idx_R, " - ", R, "\t", idx_S, " - ", S, "\t", idx_C, " - ", C)
 
     node_list_R = NODE_LIST(SC, "R")
     node_list_R = node_list_R[::-1]
-    # print("node_list_R:", node_list_R)
     node_list_S = NODE_LIST(SC, "S")
     node_list_S = node_list_S[::-1]
-    # print("node_list_S:", node_list_S)
     node_list_C = NODE_LIST(SC, "C")
     node_list_C = node_list_C[::-1]
     node_list_M = NODE_LIST(SC, "M")
     node_list_M = node_list_M[::-1]
-    # print("node_list_M:", node_list_M)
     
     pos_cont2 = {}
     list_on_2nd_line = []
@@ -1029,7 +1080,7 @@ def main(args=None):
     SC_e.add_nodes_from(SC_a)
     list_on_2nd_line, SC_e, pos_cont2 = List_at_x_axis(node_list_R, node_list_S, SC_a, SC_d, SC_e, minus_par, pos_cont2, list_on_2nd_line)
     
-    # print(pos_cont2)
+    print(pos_cont2)
 
     # turn the network in to Matrix and focus only on Tier R
     SC_A_R, SC_A_S, SC_A_C = NETW_INTO_MATRIX(SC_a, R, S, C)
@@ -1037,26 +1088,19 @@ def main(args=None):
     pos = {}
     pos_cont = {}
     pos_cont_new = {}
-
     pos_cont, node_list_rdy, IDX = CONTRACTED_POS(pos, SC_A_R, R, node_list_R, list_on_2nd_line)
-    # print(pos_cont)
     pos_cont = CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list_R, node_list_rdy, list_on_2nd_line, "R")
-    # print(pos_cont)
     
     pos = {}
-    # pos_cont = {}
     pos_cont, node_list_rdy, IDX = CONTRACTED_POS(pos, SC_A_S, S, node_list_S, list_on_2nd_line)
     pos_cont = CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list_S, node_list_rdy, list_on_2nd_line, "S")
-    # print(pos_cont)
     
     pos = {}
-    # pos_cont = {}
     pos_cont, node_list_rdy, IDX = CONTRACTED_POS(pos, SC_A_C, C, node_list_C, list_on_2nd_line)
     pos_cont = CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list_C, node_list_rdy, list_on_2nd_line, "C")
     pos_cont = CONTRACTED_POS_CONT_FILL(pos_cont, SC)
-    # print(pos_cont)
 
-
+    
 
     SC_f = nx.DiGraph()
     list_pos_cont = list(pos_cont.items())
@@ -1070,18 +1114,13 @@ def main(args=None):
     list_pos_cont = list_pos_cont1
     length = len(list_pos_cont)
     list_pos_cont = bubble_sort(length, list_pos_cont)
-    # print(list_pos_cont)
     # adding edges between nodes at y=0 axis
     list_at_0 = [list_pos_cont[l] for l, val in enumerate(list_pos_cont) if val[1][1] == 0]
     list_under_0 = [list_pos_cont[l] for l, val in enumerate(list_pos_cont) if val[1][1] < 0]
-    # print("list_at_0", list_at_0)
-    # print("list_under_0", list_under_0)
     for l in range(len(list_pos_cont)):
         node1 = list_pos_cont[l][0]
-        # print("node1:", node1)
         if(pos_cont[node1][0] < R+S+C+M-1):
             node2 = list_pos_cont[l+1][0]
-            # print("node2:", node2)
             SC_f.add_edge(node1, node2)
     
     
@@ -1092,7 +1131,6 @@ def main(args=None):
     for i in list_pos_cont:
         node_list_pos_cont.append(i[0])
     len_node_list_pos_cont = len(node_list_pos_cont)
-    # print(len_node_list_pos_cont)
 
     SC_h = dual_sourcing_at_diversified_suppliers(SC_a, pos_cont, node_list_pos_cont)
 
@@ -1104,60 +1142,56 @@ def main(args=None):
     SC_g.add_node('Start')
     pos_cont['Start'] = (-2, 0)
     start_node = list_pos_cont[0][0]
-    # print(start_node)
+
     SC_f.add_edge('Start', start_node)
     SC_g.add_edge('Start', start_node)
+    node_list_pos_cont.insert(0, 'Start')
     SC_g.add_node('OEM')
     pos_cont['OEM'] = (R+S+C+M+1, 0)
+    node_list_pos_cont.append('OEM')
     end_node = [n for n in SC_g.nodes if pos_cont[n][0] == (R+S+C+M-1)]
     for n in end_node:
         SC_g.add_edge(n, 'OEM')
         SC_f.add_edge(n, 'OEM')
 
 
-
-    # all_path = [p for p in nx.all_simple_paths(SC_g, source='Start', target = 'OEM')]
-    # orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
-    # print(all_path)
-
-    orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
-    all_path = [p for p in nx.all_simple_paths(SC_g, source='Start', target = 'OEM')]
-    # print(len(all_path))
+    orig_path = nx.all_simple_paths(SC_f, source='Start', target = 'OEM')
+    all_path = nx.all_simple_paths(SC_g, source='Start', target = 'OEM')
+    orig_path = orig_path.__next__()
+    critical_node = comparing_critical_node(all_path, orig_path)
+    critical_node = [node for node in node_list_pos_cont if node in critical_node]
     
-    orig_path = orig_path[0]
-    criticality_1st_graph = cal_criticality(SC_g, SC_f, pos_cont, all_path, orig_path)
-    # print("\ncriticality_1st_graph: ", criticality_1st_graph, "\n")
-
+    criticality_1st_graph = cal_criticality(SC_g, SC_f, critical_node, pos_cont, all_path, orig_path)
     
 
     criticality_matrix = {}
     SC_i = SC_g.copy()
-    SC_j = SC_f.copy()
     node_SC_i = list(SC_i.nodes())
+    start_time = time.time()
     for idx_i in range(len(SC_i)-2):
         node_to_remove = node_SC_i[idx_i]
         if('|' in node_to_remove) and ('S' not in node_to_remove) and ('R' not in node_to_remove):
             idx_of_bar = node_to_remove.index('|')
             if(node_to_remove[idx_of_bar-1] == node_to_remove[idx_of_bar+1]):
                 continue
-        SC_i.remove_node(node_to_remove)
-        all_path = [p for p in nx.all_simple_paths(SC_i, source='Start', target = 'OEM')]
-        orig_path = [path for path in nx.all_simple_paths(SC_f, source='Start', target = 'OEM')]
-        orig_path = orig_path[0]
-        # print("len(all_path) = ", len(all_path), "len(orig_path) = ", len(orig_path))
-        if(node_to_remove not in orig_path) and (len(all_path) != 0):
-            orig_path = all_path[0]
-        criticality_1st_without_i = cal_criticality(SC_i, SC_f, pos_cont, all_path, orig_path)
-        # print("criticality_1st_without_", node_to_remove, criticality_1st_without_i)
+        
+        if(node_to_remove in critical_node):
+            criticality_1st_without_i = 0
+        else:
+            SC_i.remove_node(node_to_remove)
+            all_path = nx.all_simple_paths(SC_i, source='Start', target = 'OEM')
+            orig_path = nx.all_simple_paths(SC_f, source='Start', target = 'OEM')
+            orig_path = orig_path.__next__()
+            if(node_to_remove not in orig_path):
+                orig_path = all_path.__next__()
+            criticality_1st_without_i = cal_criticality(SC_i, SC_f, critical_node, pos_cont, all_path, orig_path)
         diff = criticality_1st_graph - criticality_1st_without_i
         criticality_matrix[node_to_remove] = diff
         SC_i = SC_g.copy()
+    end_time = time.time()
+
     
-
-    # print(criticality_matrix)
-
-
-
+    # plot the contracte production network
     plt.figure(6)
     nx.draw_networkx_edges(SC_h, pos = pos_cont, edge_color = 'blue', connectionstyle = "arc3, rad = 1.0", arrows = True)
     nx.draw_networkx_edges(SC_e, pos = pos_cont, edge_color = 'green', connectionstyle = "arc3, rad = 0.3", arrows = True)
@@ -1166,89 +1200,141 @@ def main(args=None):
     nx.draw_networkx_nodes(SC_g, pos = pos_cont, node_size = 450, node_color = 'w', node_shape = 'o')
     nx.draw_networkx_labels(SC_g, pos = pos_cont, font_size = 10, font_color = 'black')
     
-    # nx.draw_networkx_edges(SC_c, pos = pos_cont, edge_color = 'blue', connectionstyle = "arc3, rad = 0.5", arrows = True)
-
     
+    # ======================================================================= #
+    # if necessary, here is the Performance for Contracted Production Network
+    SC_k = SC_g.copy()
+    SC_k.remove_node('Start')
+    SC_k.remove_node('OEM')
+    SC_j = SC_k.copy()
+    mapping_perform = pos_cont
+    mapping_perform.pop('Start')
+    mapping_perform.pop('OEM')
+    for node in SC_k.nodes:
+        if('|' in node) and ('S' not in node) and ('R' not in node):
+            idx_of_bar = node.index('|')
+            if(node[idx_of_bar-1] == node[idx_of_bar+1]):
+                SC_j.remove_node(node)
+                mapping_perform.pop(node)
     
-    '''
-    # pos_cont = CONTRACTED_POS_CONT_FILL(pos_cont, SC, idx_R)
-    plt.figure(2)
+    mapping_perform = CRITICAL_1(mapping_perform, SC_j, T1, T2, T3, T4)
+    perform_SC_g = mapping_perform
+    # ======================================================================= #
+    #                       Betweennesss based on SC_b                        #
+    # ======================================================================= #
+    plt.figure(5, figsize = (16, 6))
     colors = list('rgbcmyk')
     DC = nx.algorithms.degree_centrality(SC_b)
     BC = nx.algorithms.betweenness_centrality(SC_b)
     EC = nx.algorithms.eigenvector_centrality(SC_b, max_iter = 1000)
     HC = nx.hits(SC_b)[1]
-    # print("DC | ", DC)
-    plt.subplot(2,2,1)
-    plt.title('Degree Centrality')
+
+    # plt.subplot(2,2,1)
+    # plt.title('Degree Centrality')
     for data in DC.items():
         x = data[0]
         y = data[1]
         if(y == 0):
             y = y + 10e-5
-        plt.scatter(x, y, color = 'lightblue')
-    # print("BC | ", BC)
-    plt.subplot(2,2,2)
-    plt.title('Betweenness Centrality')
+        # plt.scatter(x, y, color = 'lightblue')
+
+    # plt.subplot(2,2,2)
+    # plt.title('Betweenness Centrality')
     for data in BC.items():
         x = data[0]
         y = data[1]
         if(y == 0):
             y = y + 10e-5
-        plt.scatter(x, y, color = 'lightblue')
-    # print("EC | ", EC)
-    plt.subplot(2,2,3)
-    plt.title('Eigenvector Centrality')
+        # plt.scatter(x, y, color = 'lightblue')
+
+    # plt.subplot(2,2,3)
+    # plt.title('Eigenvector Centrality')
     for data in EC.items():
         x = data[0]
         y = data[1]
         if(y == 0):
             y = y + 10e-5
-        plt.scatter(x, y, color = 'lightblue')
-    plt.subplot(2,2,4)
-    '''
+        # plt.scatter(x, y, color = 'lightblue')
+    plt.subplot(1,2,1)
+    plt.title('Correlation Analysis - Centrality - multi-partite Network')
+    corr_x = np.array(list(DC.values()))
+    corr_y = np.array(list(BC.values()))
+    corr_z = np.array(list(EC.values()))
+    corr_w = np.array(list(HC.values()))
+
+    r_DC_BC = np.corrcoef(corr_x, corr_y)[0,1]
+    r_DC_EC = np.corrcoef(corr_x, corr_z)[0,1]
+    r_BC_EC = np.corrcoef(corr_y, corr_z)[0,1]
+    r_DC_HC = np.corrcoef(corr_x, corr_w)[0,1]
+    r_BC_HC = np.corrcoef(corr_y, corr_w)[0,1]
+    r_EC_HC = np.corrcoef(corr_z, corr_w)[0,1]
+    plt.text(0.1, 0.5, 'DC')
+    plt.text(0.1, 0.3, 'BC')
+    plt.text(0.1, 0.1, 'EC')
+    plt.text(0.3, 0.7, 'BC')
+    plt.text(0.5, 0.7, 'EC')
+    plt.text(0.7, 0.7, 'HC')
+    plt.text(0.275, 0.5, '%.2f'%r_DC_BC)
+    plt.text(0.475, 0.5, '%.2f'%r_DC_EC)
+    plt.text(0.675, 0.5, '%.2f'%r_DC_HC)
+    plt.text(0.475, 0.3, '%.2f'%r_BC_EC)
+    plt.text(0.675, 0.3, '%.2f'%r_BC_HC)
+    plt.text(0.675, 0.1, '%.2f'%r_EC_HC)
+    # plt.savefig('./BA_data/Centrality/network/centrality_correlation_1x_CPN_{}'.format(num_of_fig))
+
+    # print("====length perform_Network: ", len(perform_SC_b), type(perform_SC_b), "====")
+    # reg_result_perf = multi_linear_reg(perform_SC_b, corr_x, corr_y, corr_z)
+    # print(reg_result_perf.summary())
+    # print("====length of criticality_CPN: ", len(criticality_matrix), type(criticality_matrix), "====")
+    # reg_result_crit = multi_linear_reg(criticality_matrix, corr_x, corr_y, corr_z)
+    # print(reg_result_crit.summary())
+    
+
+    # ======================================================================= #
+    #                       Betweennesss based on SC_g                        #
+    # ======================================================================= #
     SC_i = SC_g.copy()
 
-    plt.figure(2, figsize = (12, 6))
+    # plt.figure(2, figsize = (12, 6))
     colors = list('rgbcmyk')
     DC = nx.algorithms.degree_centrality(SC_g)
     DC = remove_parallel_node(DC)
     BC = nx.algorithms.betweenness_centrality(SC_g)
     BC = remove_parallel_node(BC)
-    EC = nx.algorithms.eigenvector_centrality(SC_g, max_iter = 10000)
+    EC = nx.algorithms.eigenvector_centrality(SC_g, max_iter = 1000000)
     EC = remove_parallel_node(EC)
-    HC = nx.hits(SC_g)[1]
+    HC = nx.hits(SC_g, max_iter = 100000)[1]
     HC = remove_parallel_node(HC)
     
-    
-    plt.subplot(2,2,1)
-    plt.title('Degree Centrality')
+    # print("DC | ", DC, '\n')
+    # plt.subplot(2,2,1)
+    # plt.title('Degree Centrality')
     for data in DC.items():
         x = data[0]
         y = data[1]
         if(y == 0):
             y = y + 10e-5
-        plt.scatter(x, y, color = 'lightblue')
+        # plt.scatter(x, y, color = 'lightblue')
     # print("BC | ", BC)
-    plt.subplot(2,2,2)
-    plt.title('Betweenness Centrality')
+    # plt.subplot(2,2,2)
+    # plt.title('Betweenness Centrality')
     for data in BC.items():
         x = data[0]
         y = data[1]
         if(y == 0):
             y = y + 10e-5
-        plt.scatter(x, y, color = 'lightblue')
-    # print("EC | ", EC)
-    plt.subplot(2,2,3)
-    plt.title('Eigenvector Centrality')
+        # plt.scatter(x, y, color = 'lightblue')
+    print("EC | ", EC)
+    # plt.subplot(2,2,3)
+    # plt.title('Eigenvector Centrality')
     for data in EC.items():
         x = data[0]
         y = data[1]
         if(y == 0):
             y = y + 10e-5
-        plt.scatter(x, y, color = 'lightblue')
-    plt.subplot(2,2,4)
-    
+        # plt.scatter(x, y, color = 'lightblue')
+    plt.subplot(1,2,2)
+    plt.title('Correlation Analysis - Centrality - Contracted Network')
 
     corr_x = np.array(list(DC.values()))
     corr_y = np.array(list(BC.values()))
@@ -1273,7 +1359,7 @@ def main(args=None):
     plt.text(0.475, 0.3, '%.2f'%r_BC_EC)
     plt.text(0.675, 0.3, '%.2f'%r_BC_HC)
     plt.text(0.675, 0.1, '%.2f'%r_EC_HC)
-    plt.savefig('./centrality_correlation_1x_CPN_{}'.format(num_of_fig))
+    plt.savefig('./BA_data/Centrality/centrality_correlation_1x_CPN_{}'.format(num_of_fig))
     
    
     # STILL NEED TO RESET THE CALCULATION FORMULAR FOR CRITICALITY
@@ -1284,18 +1370,15 @@ def main(args=None):
     # a valuable probability for the poisson Distribution 
     # SC.add_edges_from(SC_d.edges)
     plt.figure(3, figsize = (12, 6))
-    # plot_degree_dist(SC_b, 2, 'blue')
     
     
     degree_sequence = sorted([d for n, d in SC_b.degree()], reverse = True)
-    # print(degree_sequence)
-    degree_count = nx.degree_histogram(SC)
+    degree_count = nx.degree_histogram(SC_b)
     
-    # plt.figure(4)
     fit_network = powerlaw.Fit(degree_sequence)
     
+    # goodness-of-fit test power law distribution with another alternative statistic distribution
     p_comp_e = fit_network.distribution_compare('power_law', 'exponential')
-    # print(p_comp_e)
     if (p_comp_e[0] > 0) and (p_comp_e[1] >= 0.5):
         p_e = 'Power Law'
     elif (p_comp_e[0] > 0) and (p_comp_e[1] < 0.5):
@@ -1306,7 +1389,6 @@ def main(args=None):
         p_e = 'better Exponential, but not a certain answer'
 
     p_comp_ln = fit_network.distribution_compare('power_law', 'lognormal')
-    # print(p_comp_ln)
     if (p_comp_ln[0] > 0) and (p_comp_ln[1] >= 0.5):
         p_ln = 'Power Law'
     elif(p_comp_ln[0] > 0) and (p_comp_ln[1] < 0.5):
@@ -1316,9 +1398,7 @@ def main(args=None):
     elif (p_comp_ln[0] < 0) and (p_comp_ln[1] < 0.5):
         p_ln = 'better Lognormal, but not a certain answer'
 
-    # if not (p_e == 'Power Law' or 'better Power Law, but not a certain answer') and ((p_ln == 'Power Law' or 'better Power Law, but not a certain answer')):
 
-    # print("R:", R, "S:", S, "C:", C, "M:", M, "pR", pR, "pS", pS, "pC", pC, "pM", pM, fit.fixed_xmin, fit.xmin)
     plt.subplot(2,2,1)
     plt.title('Power Law PDF Fitting') 
     fit_network.plot_pdf(color = 'b', marker = 'o', linewidth = 2)
@@ -1336,14 +1416,12 @@ def main(args=None):
     plt.text(0.01, 0.35, 'Comparing with lognormal Distribution...')
     plt.text(0.01, 0.25, '%s'%p_ln)
     plt.text(0.01, 0.1, 'R:{}, S:{}, C:{}, M:{}, E_12:{}, E_23:{}, E_34:{}'.format(R, S, C, M, E_12, E_23, E_34))
-    # plt.text(0.01, 0.1, 'R:{}, S:{}, C:{}, M:{}, pR:{}, pS:{}, pC:{}, pM:{}'.format(R, S, C, M, pR, pS, pC, pM))
+
 
     G = nx.scale_free_graph(R+S+C+M, alpha = 0.5, beta = 0.3, gamma = 0.2)
-    # plot_degree_dist(G, 2, 'red')
     probability_mass_fct(G, SC_b)
 
     degree_sequence = sorted([d for n, d in G.degree()], reverse = True)
-    # print(degree_sequence)
     degree_count = nx.degree_histogram(G)
     
     # plt.figure(4)
@@ -1356,36 +1434,31 @@ def main(args=None):
     plt.subplot(2,2,3)
     plt.title('Power Law CCDF Fitting') 
     fit.plot_ccdf(color = 'r', marker = 'o', linewidth = 2)
-    plt.savefig('./power_law_distribution_1x_CPN_{}'.format(num_of_fig))
+    plt.savefig('./BA_data/Powerlaw/power_law_distribution_1x_CPN_{}'.format(num_of_fig))
 
-    print("====length perform_SC_b: ", len(perform_SC_b), type(perform_SC_b), "====")
-    reg_result_perf = multi_linear_reg(perform_SC_b, corr_x, corr_y, corr_z)
-    print(reg_result_perf.summary())
+    print("====length perform_CPN: ", len(perform_SC_g), type(perform_SC_g), "====")
+    reg_result_perf = multi_linear_reg(perform_SC_g, corr_x, corr_y, corr_z)
+    print(reg_result_perf.params)
+    print(reg_result_perf.summary2(yname = 'Performance', xname = ['DC', 'BC', 'EC', 'const']))
 
-    print("====length of criticality_matrix: ", len(criticality_matrix), type(criticality_matrix), "====")
+    print("====length of criticality_CPN: ", len(criticality_matrix), type(criticality_matrix), "====")
     reg_result_crit = multi_linear_reg(criticality_matrix, corr_x, corr_y, corr_z)
-    print(reg_result_crit.summary())
-    with open('1x_data.txt', 'a+') as file:
-        data = 'R:{}\nS:{}\nC:{}\nM:{}\npR:{}\npS:{}\npC:{}\npM:{}\nE_12:{}\nE_23:{}\nE_34:{}\nrou:{}\n\n'.format(R, S, C, M, pR, pS, pC, pM, E_12, E_23, E_34, rou)
-        data = data + 'Comparing power-law with exponential Distribution...{}\n'.format(p_e)
-        data = data + 'Comparing power-law with lognormal Distribution...{}\n\n'.format(p_ln)
-        data = data + 'alpha:{}, xmin:{}\n\n'.format(fit_network.power_law.alpha, fit_network.power_law.xmin)
-        data = data + '=============================================================================='
-        data = data + '\t\t\t\tPerformance'
-        data = data + str(reg_result_perf.summary())
-        data = data + '\n\n'
-        data = data + '=============================================================================='
-        data = data + '\t\t\t\tCriticality'
-        data = data + str(reg_result_crit.summary())
-        data = data + '\n\n'
-        data = data + '---------------------------------------------------------------------------------------{}\n\n'.format(num_of_fig)
-        file.write(data)
-    file.close()
+    print(reg_result_crit.summary2(yname = '1st Criticality', xname = ['DC', 'BC', 'EC', 'const']))
 
-  
+    if (p_e == 'Power Law' or p_e == 'better Power Law, but not a certain answer') and ((p_ln == 'Power Law' or p_ln == 'better Power Law, but not a certain answer')):
+        sheet_name = 'OLS_SUMMARY'
 
-    jls_extract_var = plt
-    jls_extract_var.show()
+        wb = opxl.load_workbook('./BA_data/OLS_SUMMARY.xlsx')
+        sheet = wb[sheet_name]
+        idx = len(list(sheet.rows))
+
+        write_into_xlsx(reg_result_perf, reg_result_crit, fit_network, sheet_name, p_e, p_ln, idx)
+    else:
+        print("【FAILED】...", num_of_fig)
+    
+
+    # jls_extract_var = plt
+    # jls_extract_var.show()
     # plt.savefig('labels.png')
 
 
