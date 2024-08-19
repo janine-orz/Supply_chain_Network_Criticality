@@ -347,7 +347,6 @@ def List_at_x_axis(node_list_R, node_list_S, SC_a, SC_d, SC_e, minus_par, pos_co
                 SC_e.add_edge(node, node1)
                 minus_par = minus_par + 1
             
-
     for node in node_list_S:
         list_var = list(SC_d.neighbors(node))
         list_var_b = list(SC_a.neighbors(node))
@@ -368,10 +367,13 @@ def parallel_supply_chain(node_list_R, node_list_S, SC_a, SC_d, node_list_pos_co
         list_var = list(SC_d.neighbors(node))
         list_var_b = list(SC_a.neighbors(node))
         for node1 in list_var:
+            # if adjacent node is in Tier M
             if ("M" in node1) and (len(list_var_b) == 0):
+                # create a copy of node1
                 name_node1 = node1 + "|" + node1[-1]
                 SC_e.add_node(name_node1)
                 pos_cont[name_node1] = (pos_cont[node1][0], pos_cont2[node][1])
+                # create a parallel path with the copy of node1
                 SC_e.add_edge(node, name_node1)
                 SC_e.remove_edge(node, node1)
                 if(node_list_pos_cont.index(node1) < len_node_list_pos_cont-1):
@@ -387,7 +389,7 @@ def parallel_supply_chain(node_list_R, node_list_S, SC_a, SC_d, node_list_pos_co
                 elif(node_list_pos_cont.index(node1) == len_node_list_pos_cont):
                     pos_cont[node] = (pos_cont[node2][0], pos_cont2[node][1])
 
-        
+            # if adjacent node is in Tier C
             elif ("C" in node1) and (len(list_var_b) == 0):
                 name_node1 = node1 + "|" + node1[-1]
                 SC_e.add_node(name_node1)
@@ -435,15 +437,11 @@ def parallel_supply_chain(node_list_R, node_list_S, SC_a, SC_d, node_list_pos_co
 
 # build the contracted production network
 def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
-    print("SC_A:\n", SC_A_R)
-    # SC_A_R = [
 
     node_list_rdy = []
     node_hor = []
     node_ver = []
     node_hor_to_ver = []
-
-    # list_on_2nd_line = []
 
     for i in range(IDX_h):
         for j in range(i, IDX_h):
@@ -470,7 +468,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
     if(len(node_hor_to_ver) == 0):
         return pos, node_list_rdy, IDX_h
     
-
+    # delete the repeating nodes
     node_mid_h = [x for x in node_hor if x in node_ver]
     node_mid_h = sorted(node_mid_h)
     node_mid_h = list(node_mid_h)
@@ -478,7 +476,7 @@ def CONTRACTED_POS(pos, SC_A_R, IDX_h, node_list, list_on_2nd_line):
     node_mid_v = sorted(node_mid_v)
     node_mid_v = list(node_mid_v)
 
-    
+    # the repeated node mean that, it has multiple adjacent nodes
     if(len(node_mid_h) != 0):
         node_v = [x for x in node_ver if x not in node_mid_v]
         node_h = [x for x in node_hor if x not in node_mid_h]
@@ -614,10 +612,10 @@ def CONTRACTED_POS_CONT_AIOT(pos_cont, pos_cont_new, IDX, node_list, node_list_r
         add_par = 0
         l = list(range(R))
     elif(string == "S"):
-        add_par = R
+        add_par = R # the nodes in S should be arranged after Tier R
         l = list(range(S))
     elif(string == "C"):
-        add_par = R + S
+        add_par = R + S # the nodes in S should be arranged after Tier S
         l = list(range(C))
     
     l = np.array([x for x in l if x not in node_list_rdy])
@@ -642,17 +640,19 @@ def CONTRACTED_POS_CONT_FILL(pos_cont, SC):
     return pos_cont
 
 
-# connection between tier R and tier C/M, connection between tier S and tier M
+# connection between tier R and tier S/C/M, connection between tier S and tier C/M
 def ADD_EDGE_TO_NEXT_TIER(node, string1, number, next_tier, SC_d, SC_b):
     if (string1 in node):
-        neighbours = list(SC_b.neighbors(node))
+        neighbours = list(SC_b.neighbors(node)) # all adjacent nodes of "node"
         
         neighbours_1 = neighbours.copy()
+        # for node in Tier S exclude adjacent nodes in Tier R
         if(string1 == "S") and (len(neighbours) != 0):
             l = len(neighbours)
             for node1 in neighbours:
                 if("R" in node1):
-                    neighbours_1.remove(node1)
+                    neighbours_1.remove(node1) 
+        # for node in Tier C exclude adjacent nodes in Tier R or in Tier S
         elif(string1 == "C") and (len(neighbours) != 0):
             l = len(neighbours)
             for node1 in neighbours:
@@ -668,10 +668,13 @@ def ADD_EDGE_TO_NEXT_TIER(node, string1, number, next_tier, SC_d, SC_b):
             else:
                 par = 0
         if(par == 1):
-            rand_idx = random.randrange(number)
+            # pick a random node in other Tiers
+            rand_idx = random.randrange(number) 
             node_rand = next_tier[rand_idx]
+            # add edge between node and the randomly picked node
             SC_d.add_edge(node, node_rand)
             SC_b.add_edge(node, node_rand)
+        
     return SC_d, SC_b
 
 
@@ -686,6 +689,7 @@ def comparing_critical_node(all_path, orig_path):
 
 # bubble sourt for the nodes
 def bubble_sort(length, list_pos_cont):
+    # according to the position, return a list with the position from low to high
     for i in range(length-1):
         swapped = False
         for j in range(length-i-1):
@@ -767,9 +771,11 @@ def dual_sourcing_at_diversified_suppliers(SC_a, pos_cont, node_list_pos_cont):
         coord = (pos_cont[edge[0]][0] + 1, 0)
         key = [key for key, value in pos_cont.items() if value == coord]
         key_2 = []
+        # set the position of the 1st node
         while(key == []):
             coord = (coord[0] + 1, 0)
             key = [key for key, value in pos_cont.items() if value == coord]
+        # if the position of the previous node is (x, y), then the position of the next node is (x+1, y)
         if(key != last_key):
             key_0 = [node_list_pos_cont[j-1] for j, val in enumerate(node_list_pos_cont) if val == key[0]]
             new_x = pos_cont[key_0[0]][0]
@@ -797,12 +803,16 @@ def cal_criticality(SC_g, SC_f, critical_node, pos_cont, all_path, orig_path):
     # -----------------------------need to  be faster
     start_t = time.time()
     criticality = []
+    
     for idx in range(len(critical_node)-1):
         path_crit = []
+        # if two nodes are not adjacent in contracted production network
+        # it means there is a split of path between them
         if(critical_node[idx+1] not in SC_f.neighbors(critical_node[idx])):
             source = critical_node[idx]
             target = critical_node[idx+1]
             p = [len(p[1:-1]) for p in nx.all_simple_paths(SC_g, source = source, target = target)]
+            # calculate the criticality of this small split
             if not ((len(p) == 1) and (p[0] == 0)):
                 for l in p:
                     add_var = math.pow(rou, l)
@@ -810,6 +820,7 @@ def cal_criticality(SC_g, SC_f, critical_node, pos_cont, all_path, orig_path):
                 criticality.append(path_crit)
     end_t = time.time()
     
+    # calculate the criticality of all the critical nodes
     criticality_crit = math.pow(rou, len(critical_node))
     
     crit = []
@@ -821,7 +832,7 @@ def cal_criticality(SC_g, SC_f, critical_node, pos_cont, all_path, orig_path):
         var2.append(1)
         par2 = 0
         for m in range(len(crit_n)):
-            var2.append(1-crit_n[m])
+            var2.append(1-crit_n[m]) # 1-crit_n[m] is the criticality of the 2nd split
             prod = multiply(*(var2[:-1])) * crit_n[m]
             var1.append(prod)
         crit.append(var1)
