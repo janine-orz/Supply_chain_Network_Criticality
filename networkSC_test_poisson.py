@@ -125,6 +125,7 @@ def BIPARTITE(SC, T1, T2, E):
     n2list = list(T2)
     n2list = n2list[:-1]
 
+    # connecting nodes in two Tiers with G(n,p)-model
     edge_count = 0
     while edge_count < E:
         u = random.choice(n2list)
